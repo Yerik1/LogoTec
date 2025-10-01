@@ -2,29 +2,49 @@
 
 Repositorio del proyecto del curso de Compiladores e Interpretes II Semestre 2025
 
+## Cómo ejecutar el proyecto
 
-## Ejecutar el proyecto en IntelliJ IDEA
+### 1. Clonar el repositorio
 
-### 1. Abrir el proyecto
-- En IntelliJ, selecciona **File → Open...** y abre la carpeta raíz del proyecto.
-- IntelliJ detectará automáticamente el archivo `pom.xml` y te pedirá importarlo como proyecto **Maven**. Acepta.
+```bash
+git clone https://github.com/Yerik1/LogoTec.git
+cd LogoTec
+```
 
-### 2. Esperar la descarga de dependencias
-- IntelliJ descargará automáticamente todas las librerías (incluyendo JavaFX) desde Maven Central.
-- Esto puede tardar la primera vez.
+### 2. Crear un entorno virtual (recomendado)
 
-### 3. Configurar una Run Configuration con Maven
-1. Ve a **Run → Edit Configurations...**.
-2. Haz clic en **+** y selecciona **Maven**.
-3. En **Working directory**, selecciona la carpeta raíz del proyecto.
-4. En **Command line**, escribe:
-   ```bash
-   clean javafx:run
-    ```
-5. Dale un nombre (por ejemplo: Run JavaFX).
-6. Guarda la configuración.
+```bash
+python3 -m venv venv
+```
+
+Activar el entorno virtual:
+
+- Linux/macOS:
+
+```bash
+source venv/bin/activate
+```
+
+- Windows (PowerShell):
+
+```bash
+.\venv\Scripts\Activate
+```
+
+### 3. Instalar dependencias
+
+```bash
+pip install -r requirements.txt
+```
 
 ### 4. Ejecutar la aplicación
-- Selecciona la configuración Run JavaFX en la esquina superior derecha de IntelliJ.
-- Haz clic en el botón Run ▶ (o presiona Shift+F10).
-- La aplicación JavaFX debería iniciar sin necesidad de configuraciones adicionales.
+
+- Desde la terminal:
+
+```bash
+python main.py
+```
+
+- Desde un IDE (IntelliJ IDEA, PyCharm, VSCode, etc.):
+
+Simplemente abre el proyecto, selecciona main.py y pulsa el botón Run.
