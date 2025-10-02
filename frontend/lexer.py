@@ -31,20 +31,24 @@ _reserved = {
     'ocultatortuga': 'OT', 'ot': 'OT',
     'poncolorlapiz': 'PONCL', 'poncl': 'PONCL',
 
-    # FALTAN
+    # --- bloques ---
     'haz': 'HAZ',
     'espera': 'ESPERA',
     'para': 'PARA', 'fin': 'FIN',
-    'si': 'SI', 'mientras': 'MIENTRAS',
     'haz.hasta': 'HAZ_HASTA', 'hasta': 'HASTA',
     'haz.mientras': 'HAZ_MIENTRAS',
     'centro': 'CENTRO',
     'ejecuta': 'EJECUTA',
     'repite': 'REPITE',
+
+    # --- logicas ---
+    'si': 'SI', 'mientras': 'MIENTRAS',
+    'y': 'Y', 'o': 'O',
+
+    # --- matematicas ---
     'iguales?': 'IGUALES',
     'mayorque?': 'MAYORQ',
     'menorque?': 'MENORQ',
-    'y': 'Y', 'o': 'O',
     'producto': 'PRODUCTO',
     'potencia': 'POTENCIA',
     'division': 'DIVISION', 'división': 'DIVISION',

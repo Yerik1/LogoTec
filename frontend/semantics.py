@@ -38,20 +38,24 @@ def type_of_expr(n: Node, st: Symtab, di: Diagnostics) -> Type:
     # fallback
     return "unknown"
 
-def check_stmt(n: Node, st: Symtab, di: Diagnostics):
+def check_stmt(n, st, di):
     k = n.kind
-    if k in ("AV", "RE", "GD", "GI"):
-        t = type_of_expr(n.children[0], st, di)
-        if t != "int":
-            di.error(n.line, f"{k} requiere una expresión numérica")
+
+    # Bloques de sentencias
+    if k in ("STMTS", "PROGRAM"):
+        for c in n.children:
+            check_stmt(c, st, di)
+
+    # Declaración con inicialización
     elif k == "INIC":
-        ident = n.children[0]  # Node("ID", name)
+        ident = n.children[0]  # Node("ID", nombre)
         expr = n.children[1]
         t = type_of_expr(expr, st, di)
-        # Para entrega 1, permitimos tipado por primera asignación (int/unknown)
         if t == "unknown":
             di.warn(expr.line, f"No se puede inferir tipo de la expresión para '{ident.value}'")
         st.set_var(str(ident.value), "int" if t == "int" else "unknown")
+
+    # Incremento
     elif k == "INC":
         ident = n.children[0]
         name = str(ident.value)
@@ -60,52 +64,121 @@ def check_stmt(n: Node, st: Symtab, di: Diagnostics):
             di.error(ident.line, f"Variable '{name}' no declarada antes de INC")
         elif ty != "int":
             di.error(ident.line, f"INC requiere variable numérica: '{name}'")
-        # si tiene delta, que sea numérico
         if len(n.children) == 2:
             t = type_of_expr(n.children[1], st, di)
             if t != "int":
                 di.error(n.children[1].line, "El incremento de INC debe ser numérico")
-    elif k in ("STMTS", "PROGRAM"):
-        for c in n.children:
-            check_stmt(c, st, di)
 
-    elif k in ("PONPOS", "PONXY"):
-        # dos expr numéricas
-        x_t = type_of_expr(n.children[0], st, di)
-        y_t = type_of_expr(n.children[1], st, di)
-        if x_t != "int" or y_t != "int":
-            di.error(n.line, f"{k} requiere coordenadas numéricas (X,Y)")
+    # Posiciones
+    elif k == "PONPOS":
+        tx = type_of_expr(n.children[0], st, di)
+        ty = type_of_expr(n.children[1], st, di)
+        if tx != "int" or ty != "int":
+            di.error(n.line, "Las coordenadas deben ser numéricas")
 
     elif k in ("PONX", "PONY", "PONRUMBO"):
         t = type_of_expr(n.children[0], st, di)
         if t != "int":
             di.error(n.line, f"{k} requiere un valor numérico")
 
-    elif k in ("BL", "SB", "OT", "RUMBO"):
-        # No requieren expresiones; no hacemos nada semántico aquí.
-        pass
+    # Movimiento / rotaciones
+    elif k in ("AV", "RE", "GD", "GI"):
+        t = type_of_expr(n.children[0], st, di)
+        if t != "int":
+            di.error(n.line, f"{k} requiere una expresión numérica")
+
+    # Lápiz y pantalla
+    elif k in ("BL", "SB", "OT", "RUMBO", "CENTRO"):
+        pass  # no requieren validación adicional
 
     elif k == "PONCL":
-        # Aceptamos ID o STR como nombre de color (no tipamos en entrega 1)
-        # Si quisieras restringir: podrías advertir cuando no sea STR ni ID.
         if n.children:
             c = n.children[0]
             if c.kind not in ("ID", "STR"):
                 di.warn(n.line, "PONCL espera un nombre de color o cadena")
 
+    # Condicional simple
     elif k == "SI":
         cond = n.children[0]
         body = n.children[1]
-
-        # Revisar que la condición sea numérica
         t = type_of_expr(cond, st, di)
         if t != "int":
-            di.error(cond.line, "La condición de 'si' debe ser una expresión numérica")
-
-        # Revisar el bloque de sentencias
+            di.error(cond.line, "La condición de 'SI' debe ser una expresión numérica")
         check_stmt(body, st, di)
 
-    # Los demás nodos (`ID`, `NUM`, `BINOP`, etc.) se validan cuando aparecen en contexto.
+    # Bucles
+    elif k == "PARA":
+        ident = n.children[0]
+        ini = n.children[1]
+        fin = n.children[2]
+        body = n.children[3]
+        ti = type_of_expr(ini, st, di)
+        tf = type_of_expr(fin, st, di)
+        if ti != "int" or tf != "int":
+            di.error(n.line, "El rango de PARA debe ser numérico")
+        st.set_var(str(ident.value), "int")
+        check_stmt(body, st, di)
+
+    elif k == "MIENTRAS":
+        cond = n.children[0]
+        body = n.children[1]
+        t = type_of_expr(cond, st, di)
+        if t != "int":
+            di.error(cond.line, "La condición de MIENTRAS debe ser numérica")
+        check_stmt(body, st, di)
+
+    elif k == "HAZ_HASTA":
+        body = n.children[0]
+        cond = n.children[1]
+        t = type_of_expr(cond, st, di)
+        if t != "int":
+            di.error(cond.line, "La condición de HAZ HASTA debe ser numérica")
+        check_stmt(body, st, di)
+
+    elif k == "HAZ_MIENTRAS":
+        body = n.children[0]
+        cond = n.children[1]
+        t = type_of_expr(cond, st, di)
+        if t != "int":
+            di.error(cond.line, "La condición de HAZ MIENTRAS debe ser numérica")
+        check_stmt(body, st, di)
+
+    elif k == "REPITE":
+        count = n.children[0]
+        body = n.children[1]
+        t = type_of_expr(count, st, di)
+        if t != "int":
+            di.error(count.line, "REPITE requiere un número de repeticiones")
+        check_stmt(body, st, di)
+
+    # Temporización / procedimientos
+    elif k == "ESPERA":
+        t = type_of_expr(n.children[0], st, di)
+        if t != "int":
+            di.error(n.line, "ESPERA requiere un valor numérico")
+
+    elif k == "EJECUTA":
+        ident = n.children[0]
+        if ident.kind != "ID":
+            di.error(ident.line, "EJECUTA requiere un identificador de procedimiento")
+
+    # Operadores aritméticos como palabras clave
+    elif k in ("PRODUCTO", "POTENCIA", "DIVISION", "SUMA", "DIFERENCIA", "AZAR"):
+        for c in n.children:
+            t = type_of_expr(c, st, di)
+            if t != "int":
+                di.error(c.line, f"{k} requiere operandos numéricos")
+
+    # Operadores lógicos / comparaciones
+    elif k in ("IGUALES", "MAYORQ", "MENORQ", "Y", "O"):
+        lt = type_of_expr(n.children[0], st, di)
+        rt = type_of_expr(n.children[1], st, di)
+        if lt != "int" or rt != "int":
+            di.error(n.line, f"{k} requiere operandos numéricos")
+
+    else:
+        di.error(n.line, f"Instrucción no reconocida: {k}")
+
 
 def analyze(root: Node) -> Diagnostics:
     di = Diagnostics()
