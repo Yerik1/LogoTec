@@ -1,5 +1,7 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog, messagebox
+import json
+import os
 
 class App(tk.Tk):
   def __init__(self: "App") -> None:
@@ -77,13 +79,60 @@ class App(tk.Tk):
     self._log_output("Compilando...\n(Sin lógica conectada aún)")
 
   def _show_ast(self):
-    self._log_output("Mostrando AST...\n(Sin lógica conectada aún)")
+    """
+    Carga un archivo JSON y lo muestra en el outputArea.
+    """
+    try:
+        file_path = os.path.join(os.path.dirname(__file__), "out", "ast.json")
+
+        if not os.path.exists(file_path):
+            self._log_output("No se encontró el archivo: out/ast.json")
+            return
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Formatear JSON con indentación bonita
+        pretty_json = json.dumps(data, indent=2, ensure_ascii=False)
+        self._log_output("=== AST (desde out/ast.json) ===")
+        self._log_output(pretty_json)
+
+    except json.JSONDecodeError as e:
+        messagebox.showerror("Error de JSON", f"El archivo no es un JSON válido:\n{e}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Ocurrió un error al cargar el AST:\n{e}")
+
+    except json.JSONDecodeError as e:
+      messagebox.showerror("Error de JSON", f"El archivo no es un JSON válido:\n{e}")
+    except Exception as e:
+      messagebox.showerror("Error", f"Ocurrió un error al cargar el archivo:\n{e}")
 
   def _run_code(self):
     self._log_output("Ejecutando...\n(Sin lógica conectada aún)")
 
   def _load_file(self):
-    self._log_output("Cargando archivo...\n(Sin lógica conectada aún)")
+    """
+    Carga un archivo de texto/código en el codeArea.
+    """
+    try:
+      file_path = filedialog.askopenfilename(
+          title="Seleccionar archivo de código",
+          filetypes=[("Archivos de texto", "*.txt *.logo *.py *.json"), ("Todos los archivos", "*.*")]
+      )
+      if not file_path:
+        return  # Usuario canceló
+
+      with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+      # Limpiar el área de código y cargar el archivo
+      self.codeArea.delete("1.0", tk.END)
+      self.codeArea.insert(tk.END, content)
+
+      self._log_output(f"Archivo cargado en editor: {file_path}")
+
+    except Exception as e:
+      messagebox.showerror("Error", f"No se pudo cargar el archivo:\n{e}")
 
   def _log_output(self: "App", message: str) -> None:
     """
@@ -96,3 +145,4 @@ class App(tk.Tk):
     self.outputArea.insert(tk.END, message + "\n")
     self.outputArea.config(state=tk.DISABLED)
     self.outputArea.see(tk.END)
+

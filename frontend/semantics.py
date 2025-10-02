@@ -70,7 +70,7 @@ def check_stmt(n, st, di):
                 di.error(n.children[1].line, "El incremento de INC debe ser numérico")
 
     # Posiciones
-    elif k == "PONPOS":
+    elif k in ("PONPOS", "PONXY"):
         tx = type_of_expr(n.children[0], st, di)
         ty = type_of_expr(n.children[1], st, di)
         if tx != "int" or ty != "int":
