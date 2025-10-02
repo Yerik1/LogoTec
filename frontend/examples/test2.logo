@@ -1,0 +1,25 @@
+// Movimiento y giros
+AV 10
+RE 5*3 + 2
+GD (90/2)
+GI -45
+
+// Variables y asignación/incremento
+INIC lado = 100
+INC [lado]
+INC [lado 5+5]
+
+// Posición y rumbo
+PONPOS [100 200]
+PONXY 0 0
+PONX 50
+PONY 80
+PONRUMBO 90
+RUMBO
+
+// Lápiz y color
+BL
+SB
+OT
+PONCL "rojo"
+PONCL azul

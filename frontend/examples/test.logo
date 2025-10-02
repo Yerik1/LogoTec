@@ -1,0 +1,18 @@
+// 1) Variable no declarada en INC
+INC [noexiste]
+
+// 2) INC con delta no numérico
+INIC n = 0
+INC [n "x"]
+
+// 3) Expresión no numérica donde se espera número (AV)
+AV "hola"
+
+// 4) Posición con tipos incorrectos
+PONPOS ["a" 10]
+PONXY 10 "b"
+PONX "c"
+PONY "d"
+
+// 5) Rumbo con tipo incorrecto
+PONRUMBO "e"
