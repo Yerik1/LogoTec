@@ -3,6 +3,10 @@ from tkinter import ttk, filedialog, messagebox
 import json
 import os
 
+from frontend.parser import parse_text
+from frontend.semantics import analyze
+from frontend.exporter import save_ast_json, save_diags_txt
+
 class App(tk.Tk):
   def __init__(self: "App") -> None:
     """
@@ -76,7 +80,33 @@ class App(tk.Tk):
     self.paned_window.add(self.outputArea, weight=1)
 
   def _compile_code(self):
-    self._log_output("Compilando...\n(Sin lógica conectada aún)")
+      try:
+          # 1. Obtener el código del editor
+          source_code = self.codeArea.get("1.0", tk.END).strip()
+          if not source_code:
+              self._log_output("El área de código está vacía.")
+              return
+
+          # 2. Parsear el texto → AST
+          ast = parse_text(source_code)
+
+          # 3. Analizar semánticamente
+          diags = analyze(ast)
+
+          # 4. Guardar resultados en carpeta out/
+          os.makedirs("out", exist_ok=True)
+          save_ast_json(ast, "out/ast.json")
+          save_diags_txt(diags, "out/diagnostics.txt")
+
+          # 5. Mostrar feedback en consola GUI
+          self._log_output("=== Compilación completada ===")
+          self._log_output(ast.pretty())
+          self._log_output("\n-- Diagnósticos --")
+          self._log_output(diags.pretty())
+
+      except Exception as e:
+          messagebox.showerror("Error de compilación", str(e))
+          self._log_output(f"Error en compilación: {e}")
 
   def _show_ast(self):
     """
