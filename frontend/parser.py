@@ -216,6 +216,11 @@ def p_expr_azar_range(p):
     "expr : AZAR expr expr"
     p[0] = Node("AZAR_RANGE", line=p.lineno(1)).add(p[2], p[3])
 
+def p_stmt_si(p):
+    "stmt : SI expr HAZ stmt_list FIN"
+    # Nodo SI con dos hijos: condición y bloque de sentencias
+    p[0] = Node("SI", line=p.lineno(1)).add(p[2], p[4])
+
 # Errores
 def p_error(t):
     if t:

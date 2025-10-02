@@ -92,6 +92,19 @@ def check_stmt(n: Node, st: Symtab, di: Diagnostics):
             c = n.children[0]
             if c.kind not in ("ID", "STR"):
                 di.warn(n.line, "PONCL espera un nombre de color o cadena")
+
+    elif k == "SI":
+        cond = n.children[0]
+        body = n.children[1]
+
+        # Revisar que la condición sea numérica
+        t = type_of_expr(cond, st, di)
+        if t != "int":
+            di.error(cond.line, "La condición de 'si' debe ser una expresión numérica")
+
+        # Revisar el bloque de sentencias
+        check_stmt(body, st, di)
+
     # Los demás nodos (`ID`, `NUM`, `BINOP`, etc.) se validan cuando aparecen en contexto.
 
 def analyze(root: Node) -> Diagnostics:
