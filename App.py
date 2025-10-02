@@ -95,12 +95,11 @@ class App(tk.Tk):
 
           # 4. Guardar resultados en carpeta out/
           os.makedirs("out", exist_ok=True)
-          save_ast_json(ast, "out/ast.json")
+
           save_diags_txt(diags, "out/diagnostics.txt")
 
           # 5. Mostrar feedback en consola GUI
           self._log_output("=== Compilación completada ===")
-          self._log_output(ast.pretty())
           self._log_output("\n-- Diagnósticos --")
           self._log_output(diags.pretty())
 
@@ -109,6 +108,29 @@ class App(tk.Tk):
           self._log_output(f"Error en compilación: {e}")
 
   def _show_ast(self):
+    """
+    Carga directamente el archivo out/ast.json y muestra un ejemplo
+    del contenido en forma de árbol simplificado.
+    """
+    try:
+      file_path = os.path.join(os.path.dirname(__file__), "out", "ast.json")
+
+      '''if not os.path.exists(file_path):
+        self._log_output("No se encontró el archivo: out/ast.json")
+        return'''
+      source_code = self.codeArea.get("1.0", tk.END).strip()
+
+        # 2. Parsear el texto → AST
+      ast = parse_text(source_code)
+      save_ast_json(ast, "out/ast.json")
+      self._log_output(ast.pretty())
+
+    except json.JSONDecodeError as e:
+      messagebox.showerror("Error de JSON", f"El archivo no es un JSON válido:\n{e}")
+    except Exception as e:
+      messagebox.showerror("Error", f"Ocurrió un error al cargar el AST:\n{e}")
+
+  '''def _show_ast(self):
     """
     Carga un archivo JSON y lo muestra en el outputArea.
     """
@@ -136,7 +158,7 @@ class App(tk.Tk):
       messagebox.showerror("Error de JSON", f"El archivo no es un JSON válido:\n{e}")
     except Exception as e:
       messagebox.showerror("Error", f"Ocurrió un error al cargar el archivo:\n{e}")
-
+'''
   def _run_code(self):
     self._log_output("Ejecutando...\n(Sin lógica conectada aún)")
 
