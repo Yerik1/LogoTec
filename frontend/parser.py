@@ -175,7 +175,46 @@ def p_stmt_centro(p):
     "stmt : CENTRO"
     p[0] = Node("CENTRO", line=p.lineno(1))
 
+def p_expr_comp(p):
+    """expr : expr IGUALES expr
+            | expr MAYORQ expr
+            | expr MENORQ expr"""
+    # Nodo para operadores relacionales
+    p[0] = Node("RELOP", p[2], line=p.lineno(2)).add(p[1], p[3])
 
+def p_expr_logic(p):
+    """expr : expr Y expr
+            | expr O expr"""
+    p[0] = Node("LOGIC", p[2], line=p.lineno(2)).add(p[1], p[3])
+
+def p_expr_producto(p):
+    "expr : PRODUCTO expr expr"
+    p[0] = Node("BINOP", '*', line=p.lineno(1)).add(p[2], p[3])
+
+def p_expr_suma(p):
+    "expr : SUMA expr expr"
+    p[0] = Node("BINOP", '+', line=p.lineno(1)).add(p[2], p[3])
+
+def p_expr_diferencia(p):
+    "expr : DIFERENCIA expr expr"
+    p[0] = Node("BINOP", '-', line=p.lineno(1)).add(p[2], p[3])
+
+def p_expr_division_word(p):
+    "expr : DIVISION expr expr"
+    p[0] = Node("BINOP", '/', line=p.lineno(1)).add(p[2], p[3])
+
+def p_expr_potencia(p):
+    "expr : POTENCIA expr expr"
+    p[0] = Node("POW", line=p.lineno(1)).add(p[2], p[3])
+
+# azar: sin argumentos => número aleatorio en [0,1]
+def p_expr_azar_simple(p):
+    "expr : AZAR"
+    p[0] = Node("AZAR", line=p.lineno(1))
+
+def p_expr_azar_range(p):
+    "expr : AZAR expr expr"
+    p[0] = Node("AZAR_RANGE", line=p.lineno(1)).add(p[2], p[3])
 
 # Errores
 def p_error(t):
