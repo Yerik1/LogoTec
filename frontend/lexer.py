@@ -7,6 +7,7 @@ import ply.lex as lex
 
 # --- Palabras reservadas (en minúscula) ---
 # Subconjunto inicial: movimiento, giros, init y aumento.
+
 _reserved = {
     # movimientos
     'avanza': 'AV', 'av': 'AV',

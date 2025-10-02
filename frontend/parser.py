@@ -12,6 +12,8 @@ precedence = (
     ('left', '+', '-'),
     ('left', '*', '/'),
     ('right', 'UMINUS'),
+    ('left', 'Y', 'O'),
+    ('nonassoc', 'IGUALES', 'MAYORQ', 'MENORQ'),
 )
 
 # --------- Gramática ----------
@@ -128,6 +130,52 @@ def p_expr_str(p):
 def p_expr_id(p):
     "expr : ID"
     p[0] = Node("ID", p[1], line=p.lineno(1))
+
+def p_stmt_haz_block(p):
+    "stmt : HAZ stmt_list FIN"
+    p[0] = Node("HAZ", line=p.lineno(1)).add(p[2])
+
+def p_stmt_haz_hasta(p):
+    # do ... until (haz ... hasta expr)
+    "stmt : HAZ stmt_list HASTA expr"
+    p[0] = Node("HAZ_HASTA", line=p.lineno(1)).add(p[2], p[4])
+
+def p_stmt_haz_mientras(p):
+    # do ... while (haz ... mientras expr)
+    "stmt : HAZ_MIENTRAS stmt_list MIENTRAS expr"
+    p[0] = Node("HAZ_MIENTRAS", line=p.lineno(1)).add(p[2], p[4])
+
+def p_stmt_espera(p):
+    "stmt : ESPERA expr"
+    p[0] = Node("ESPERA", line=p.lineno(1)).add(p[2])
+
+def p_stmt_para(p):
+    # sintaxis propuesta: para ID = expr HASTA expr HAZ stmt_list FIN
+    "stmt : PARA ID '=' expr HASTA expr HAZ stmt_list FIN"
+    p[0] = Node("PARA", line=p.lineno(1)).add(
+        Node("ID", p[2], line=p.lineno(2)), p[4], p[6], p[8]
+    )
+
+def p_stmt_mientras(p):
+    # mientras expr haz ... fin
+    "stmt : MIENTRAS expr HAZ stmt_list FIN"
+    p[0] = Node("MIENTRAS", line=p.lineno(1)).add(p[2], p[4])
+
+def p_stmt_repite(p):
+    # repite expr haz ... fin  (repite N veces)
+    "stmt : REPITE expr HAZ stmt_list FIN"
+    p[0] = Node("REPITE", line=p.lineno(1)).add(p[2], p[4])
+
+def p_stmt_ejecuta(p):
+    # ejecuta ID  (llamar a procedimiento)
+    "stmt : EJECUTA ID"
+    p[0] = Node("EJECUTA", line=p.lineno(1)).add(Node("ID", p[2], line=p.lineno(2)))
+
+def p_stmt_centro(p):
+    "stmt : CENTRO"
+    p[0] = Node("CENTRO", line=p.lineno(1))
+
+
 
 # Errores
 def p_error(t):
