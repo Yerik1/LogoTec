@@ -31,6 +31,10 @@ _reserved = {
     'ocultatortuga': 'OT', 'ot': 'OT',
     'poncolorlapiz': 'PONCL', 'poncl': 'PONCL',
 
+    # --- logicas ---
+    'si': 'SI', 'mientras': 'MIENTRAS',
+    'y': 'Y', 'o': 'O',
+
     # --- bloques ---
     'haz': 'HAZ',
     'espera': 'ESPERA',
@@ -41,9 +45,7 @@ _reserved = {
     'ejecuta': 'EJECUTA',
     'repite': 'REPITE',
 
-    # --- logicas ---
-    'si': 'SI', 'mientras': 'MIENTRAS',
-    'y': 'Y', 'o': 'O',
+
 
     # --- matematicas ---
     'iguales?': 'IGUALES',
@@ -96,7 +98,7 @@ def t_STRING(t):
 # --- Identificadores y palabras clave (case-insensitive) ---
 # Permitimos típicos IDs de lenguajes: letra/underscore inicial, luego alfanum/underscore.
 def t_ID(t):
-    r'[A-Za-z_][A-Za-z0-9_]*([?.][A-Za-z_]+)?'
+    r'[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_]+)?\??'
     lexeme_lower = t.value.lower()
     # normalizamos las claves con y sin acento para 'división'
     if lexeme_lower == 'división':

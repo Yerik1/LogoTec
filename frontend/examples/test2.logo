@@ -1,25 +1,110 @@
-// Movimiento y giros
+// =======================================
+// Mega test LogoTec (FULL OK)
+// Cubre:
+//  - Mov: AV, RE, GD, GI
+//  - Vars: INIC, INC
+//  - Dibujo: PONPOS, PONXY, PONX, PONY, PONRUMBO, RUMBO, BL, SB, OT, PONCL, CENTRO
+//  - Bloques: EJECUTA, REPITE, SI, MIENTRAS, HAZ.HASTA ... HASTA, HAZ.MIENTRAS
+//  - Lógicas: IGUALES?, MAYORQ?, MENORQ?, Y, O
+//  - Matemáticas (palabra): PRODUCTO, POTENCIA, DIVISION, SUMA, DIFERENCIA, AZAR
+//  - Procedimientos: PARA ... FIN + llamada
+// =======================================
+
+// -------- Variables iniciales --------
+INIC lado = 50
+INIC i = 0
+INIC n = 4
+INIC x = 100
+INIC a = 80
+
+// Expresiones en palabra (numéricas)
+INIC area     = PRODUCTO lado lado         // lado * lado = 2500
+INIC pow      = POTENCIA 2 8               // 256
+INIC div      = DIVISION 100 5             // 20
+INIC sum      = SUMA 15 5                  // 20
+INIC dif      = DIFERENCIA 10 3            // 7
+INIC ruido    = AZAR 10                    // entero aleatorio [0..9] según backend
+
+// Incrementos
+INC [lado]                       // lado = 51
+INC [i 1]                        // i = 1
+
+// -------- Dibujo base --------
+CENTRO
+BL
+PONCL "azul"
+PONPOS [x a]                     // (100, 80)
 AV 10
 RE 5*3 + 2
-GD (90/2)
+GD (90/2)                        // 45
 GI -45
-
-// Variables y asignación/incremento
-INIC lado = 100
-INC [lado]
-INC [lado 5+5]
-
-// Posición y rumbo
-PONPOS [100 200]
-PONXY 0 0
-PONX 50
-PONY 80
 PONRUMBO 90
 RUMBO
-
-// Lápiz y color
-BL
 SB
 OT
-PONCL "rojo"
-PONCL azul
+PONCL verde                      // id como color
+BL
+
+// -------- Bloque EJECUTA (lista de órdenes) --------
+EJECUTA [
+  AV 10
+  RE 5
+  GD 30
+  GI 15
+]
+
+// -------- REPITE n [ ... ] --------
+REPITE 4 [
+  AV lado
+  GD 90
+]
+
+// -------- SI (condición) [ ... ] --------
+// Usa comparación y composición lógica en palabra.
+SI IGUALES? lado SUMA 25 26 [          // IGUALES? lado (25+26) => IGUALES? 51 51 => TRUE
+  PONCL "verde"
+  ESPERA 5
+]
+
+// -------- MIENTRAS (condición) [ ... ] --------
+MIENTRAS MENORQUE? i n [                // mientras i < n
+  AV 10
+  INC [i 1]
+]
+
+// -------- HAZ.HASTA [ ... ] HASTA (condición) --------
+HAZ.HASTA [
+  GI 10
+  INC [x 1]
+] HASTA MAYORQUE? x 120                 // se repite hasta que x > 120
+
+// -------- HAZ.MIENTRAS [ ... ] MIENTRAS (condición) --------
+HAZ.MIENTRAS [
+  RE 5
+  INC [a 1]
+] MIENTRAS MENORQUE? a 100              // se repite mientras y < 100
+
+// -------- Posiciones puntuales --------
+PONXY 0 0
+PONX area                             // 2500 (prueba de expr)
+PONY dif                              // 7
+
+// -------- Procedimiento / llamada --------
+PARA cuadrado [l]
+  REPITE 4 [
+    AV l
+    GD 90
+  ]
+FIN
+
+// Llamada a procedimiento (sin argumentos en esta gramática básica)
+cuadrado [40]
+
+// -------- Más combinaciones para estresar --------
+INIC dx = 2 * (lado + 3)              // usando aritmética simbólica
+INIC dy = DIFERENCIA 40 7
+AV dx
+RE dy
+PONPOS [Azar 50 Azar 30]               //expr en posición
+PONCL "azul"
+ESPERA 10

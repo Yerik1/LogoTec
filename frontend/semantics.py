@@ -4,20 +4,62 @@ from typing import Dict, Literal, Optional
 from .ast import Node
 from .diagnostics import Diagnostics
 
-Type = Literal["int", "unknown"]  # por ahora solo numéricos (entrega 1)
+Type = Literal["int","bool", "unknown"]  # por ahora solo numéricos (entrega 1)
 
 class Symtab:
     def __init__(self) -> None:
-        self.vars: Dict[str, Type] = {}  # nombre -> tipo
+        self.vars: list[dict[str, str]] = [{}]  # nombre -> tipo
+        self.procs: dict[str, int] = {}
 
-    def set_var(self, name: str, ty: Type):
-        self.vars[name] = ty
+    def push(self):
+        self.vars.append({})
 
-    def get_var(self, name: str) -> Optional[Type]:
-        return self.vars.get(name, None)
+    def pop(self):
+        if len(self.vars) > 1:
+            self.vars.pop()
+
+    def set_var(self, name: str, ty: str):
+        self.vars[-1][name] = ty
+
+    def get_var(self, name: str) -> str | None:
+        for scope in reversed(self.vars):
+            if name in scope:
+                return scope[name]
+        return None
+
+    def set_proc(self, name: str, arity: int):
+        self.procs[name] = arity
+
+    def get_proc_arity(self, name: str) -> int | None:
+        return self.procs.get(name)
+
+def type_of_bexpr(n: Node, st: Symtab, di: Diagnostics) -> Type:
+    if n.kind == "RELOP":
+        if len(n.children) != 2:
+            di.error(n.line, f"{n.value} requiere 2 operandos")
+            return "unknown"
+        lt = type_of_expr(n.children[0], st, di)
+        rt = type_of_expr(n.children[1], st, di)
+        if lt != "int" or rt != "int":
+            di.error(n.line, f"{n.value} requiere operandos numéricos")
+            return "unknown"
+        return "bool"
+    if n.kind == "BOOLBIN":
+        if len(n.children) != 2:
+            di.error(n.line, f"Operador lógico '{n.value}' requiere 2 operandos")
+            return "unknown"
+        lt = type_of_bexpr(n.children[0], st, di)
+        rt = type_of_bexpr(n.children[1], st, di)
+        if lt != "bool" or rt != "bool":
+            di.error(n.line, f"Operador lógico '{n.value}' requiere booleanos")
+            return "unknown"
+        return "bool"
+    # Paréntesis u otros
+    if n.kind not in ("PROGRAM","STMTS"):
+        di.warn(n.line, f"Expresión booleana desconocida de tipo '{n.kind}'")
+    return "unknown"
 
 def type_of_expr(n: Node, st: Symtab, di: Diagnostics) -> Type:
-    """Inferencia simple de tipos para expresiones."""
     if n.kind == "NUM":
         return "int"
     if n.kind == "STR":
@@ -26,17 +68,55 @@ def type_of_expr(n: Node, st: Symtab, di: Diagnostics) -> Type:
         ty = st.get_var(str(n.value))
         return ty or "unknown"
     if n.kind == "NEG":
+        if not n.children:
+            di.error(n.line, "Operador unario sin operando")
+            return "unknown"
         return type_of_expr(n.children[0], st, di)
     if n.kind == "BINOP":
+        if len(n.children) != 2:
+            di.error(n.line, f"Operación '{n.value}' requiere 2 operandos")
+            return "unknown"
         lt = type_of_expr(n.children[0], st, di)
         rt = type_of_expr(n.children[1], st, di)
-        # Por ahora, exigimos numéricos; si no, marcamos unknown.
         if lt != "int" or rt != "int":
             di.error(n.line, f"Operación '{n.value}' requiere operandos numéricos")
             return "unknown"
         return "int"
+    if n.kind == "POW":
+        if len(n.children) != 2:
+            di.error(n.line, "POTENCIA requiere 2 operandos")
+            return "unknown"
+        lt = type_of_expr(n.children[0], st, di)
+        rt = type_of_expr(n.children[1], st, di)
+        if lt != "int" or rt != "int":
+            di.error(n.line, "POTENCIA requiere operandos numéricos")
+            return "unknown"
+        return "int"
+    if n.kind == "CALL":
+        op = n.value
+        if op == "AZAR":
+            if len(n.children) != 1:
+                di.error(n.line, "AZAR requiere 1 argumento numérico")
+                return "unknown"
+            t = type_of_expr(n.children[0], st, di)
+            return "int" if t == "int" else "unknown"
+        if op in ("PRODUCTO", "POTENCIA", "DIVISION", "SUMA", "DIFERENCIA"):
+            if len(n.children) != 2:
+                di.error(n.line, f"{op} requiere 2 operandos")
+                return "unknown"
+            lt = type_of_expr(n.children[0], st, di)
+            rt = type_of_expr(n.children[1], st, di)
+            if lt != "int" or rt != "int":
+                di.error(n.line, f"{op} requiere operandos numéricos")
+                return "unknown"
+            return "int"
+        # Si es una llamada a procedimiento (stmt : ID), aquí no debería entrar
+        # (solo aparece como stmt). Devolvemos unknown por si aparece en expr.
+        return "unknown"
+
     # fallback
     return "unknown"
+
 
 def check_stmt(n, st, di):
     k = n.kind
@@ -99,57 +179,61 @@ def check_stmt(n, st, di):
 
     # Condicional simple
     elif k == "SI":
-        cond = n.children[0]
-        body = n.children[1]
-        t = type_of_expr(cond, st, di)
-        if t != "int":
-            di.error(cond.line, "La condición de 'SI' debe ser una expresión numérica")
-        check_stmt(body, st, di)
+        tb = type_of_bexpr(n.children[0], st, di)
+        if tb != "bool":
+            di.error(n.line, "La condición de 'SI' debe ser booleana")
+        check_stmt(n.children[1], st, di)
 
     # Bucles
     elif k == "PARA":
-        ident = n.children[0]
-        ini = n.children[1]
-        fin = n.children[2]
-        body = n.children[3]
-        ti = type_of_expr(ini, st, di)
-        tf = type_of_expr(fin, st, di)
-        if ti != "int" or tf != "int":
-            di.error(n.line, "El rango de PARA debe ser numérico")
-        st.set_var(str(ident.value), "int")
-        check_stmt(body, st, di)
+        if len(n.children) < 3 or n.children[1].kind != "PARAMS" or n.children[2].kind != "STMTS":
+            di.error(n.line, "Definición de procedimiento inválida")
+        else:
+            name_node = n.children[0]  # ID(nombre)
+            params = n.children[1].children  # lista de IDs
+            body = n.children[2]
+
+            # Registrar procedimiento y su aridad
+            proc_name = str(name_node.value)
+            arity = sum(1 for p in params if p.kind == "ID")
+            st.set_proc(proc_name, arity)
+
+            # Scope para params (tipo int en esta entrega)
+            st.push()
+            for pid in params:
+                if pid.kind == "ID":
+                    st.set_var(str(pid.value), "int")
+
+            check_stmt(body, st, di)
+            st.pop()
+
 
     elif k == "MIENTRAS":
-        cond = n.children[0]
-        body = n.children[1]
-        t = type_of_expr(cond, st, di)
-        if t != "int":
-            di.error(cond.line, "La condición de MIENTRAS debe ser numérica")
-        check_stmt(body, st, di)
+        tb = type_of_bexpr(n.children[0], st, di)
+        if tb != "bool":
+            di.error(n.line, "La condición de MIENTRAS debe ser booleana")
+        check_stmt(n.children[1], st, di)
+
 
     elif k == "HAZ_HASTA":
-        body = n.children[0]
-        cond = n.children[1]
-        t = type_of_expr(cond, st, di)
-        if t != "int":
-            di.error(cond.line, "La condición de HAZ HASTA debe ser numérica")
-        check_stmt(body, st, di)
+        check_stmt(n.children[0], st, di)  # bloque
+        tb = type_of_bexpr(n.children[1], st, di)
+        if tb != "bool":
+            di.error(n.line, "La condición de HASTA debe ser booleana")
+
 
     elif k == "HAZ_MIENTRAS":
-        body = n.children[0]
-        cond = n.children[1]
-        t = type_of_expr(cond, st, di)
-        if t != "int":
-            di.error(cond.line, "La condición de HAZ MIENTRAS debe ser numérica")
-        check_stmt(body, st, di)
+        check_stmt(n.children[0], st, di)
+        tb = type_of_bexpr(n.children[1], st, di)
+        if tb != "bool":
+            di.error(n.line, "La condición de MIENTRAS debe ser booleana")
+
 
     elif k == "REPITE":
-        count = n.children[0]
-        body = n.children[1]
-        t = type_of_expr(count, st, di)
+        t = type_of_expr(n.children[0], st, di)
         if t != "int":
-            di.error(count.line, "REPITE requiere un número de repeticiones")
-        check_stmt(body, st, di)
+            di.error(n.line, "REPITE requiere una expresión numérica para el conteo")
+        check_stmt(n.children[1], st, di)
 
     # Temporización / procedimientos
     elif k == "ESPERA":
@@ -157,10 +241,21 @@ def check_stmt(n, st, di):
         if t != "int":
             di.error(n.line, "ESPERA requiere un valor numérico")
 
+
     elif k == "EJECUTA":
-        ident = n.children[0]
-        if ident.kind != "ID":
-            di.error(ident.line, "EJECUTA requiere un identificador de procedimiento")
+        if not n.children:
+            di.error(n.line, "EJECUTA requiere un bloque o un identificador")
+        else:
+            ident = n.children[0]
+            if ident.kind == "ID":
+                # Llamada a procedimiento por nombre → aceptada
+                pass
+            elif ident.kind == "STMTS":
+                # Bloque de sentencias → validar su contenido
+                check_stmt(ident, st, di)
+            else:
+                di.error(ident.line or n.line, "EJECUTA requiere un bloque [...] o un identificador de procedimiento")
+
 
     # Operadores aritméticos como palabras clave
     elif k in ("PRODUCTO", "POTENCIA", "DIVISION", "SUMA", "DIFERENCIA", "AZAR"):
@@ -176,6 +271,34 @@ def check_stmt(n, st, di):
         if lt != "int" or rt != "int":
             di.error(n.line, f"{k} requiere operandos numéricos")
 
+
+    elif k == "CALL":
+        # hijos: [ ID(nombre) ] o [ ID(nombre), ARGS(...) ]
+        if not n.children:
+            di.error(n.line, "Llamada inválida")
+        else:
+            name_node = n.children[0]
+            if name_node.kind != "ID":
+                di.error(n.line, "Llamada inválida: falta nombre de procedimiento")
+            else:
+                pname = str(name_node.value)
+                declared_arity = st.get_proc_arity(pname)
+                # si no está declarado, en esta entrega no rechazamos, solo avisamos (opcional)
+                if declared_arity is None:
+                    # di.warn(n.line, f"Procedimiento '{pname}' no declarado")
+                    pass
+                else:
+                    # contar args reales (si hay ARGS)
+                    passed_arity = 0
+                    if len(n.children) >= 2 and n.children[1].kind == "ARGS":
+                        passed_arity = len(n.children[1].children)
+                        # tipar cada arg como expr numérica (esta entrega)
+                        for arg in n.children[1].children:
+                            if type_of_expr(arg, st, di) != "int":
+                                di.error(arg.line, f"Argumento no numérico en llamada a '{pname}'")
+                    if passed_arity != declared_arity:
+                        di.error(n.line,
+                                 f"Llamada a '{pname}' con {passed_arity} argumento(s); se esperaban {declared_arity}")
     else:
         di.error(n.line, f"Instrucción no reconocida: {k}")
 

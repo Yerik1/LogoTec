@@ -85,11 +85,14 @@ class App(tk.Tk):
           # 1. Obtener el código del editor
           source_code = self.codeArea.get("1.0", tk.END).strip()
           if not source_code:
+              self._clear_output()
               self._log_output("El área de código está vacía.")
               return
 
           # 2. Parsear el texto → AST
           ast = parse_text(source_code)
+          # Salidas para la GUI
+
 
           # 3. Analizar semánticamente
           diags = analyze(ast)
@@ -97,15 +100,18 @@ class App(tk.Tk):
           # 4. Guardar resultados en carpeta out/
           os.makedirs("out", exist_ok=True)
 
+          save_ast_json(ast, "out/ast.json")
           save_diags_txt(diags, "out/diagnostics.txt")
 
           # 5. Mostrar feedback en consola GUI
+          self._clear_output()
           self._log_output("=== Compilación completada ===")
           self._log_output("\n-- Diagnósticos --")
           self._log_output(diags.pretty())
 
       except Exception as e:
           messagebox.showerror("Error de compilación", str(e))
+          self._clear_output()
           self._log_output(f"Error en compilación: {e}")
 
   def _show_ast(self):
@@ -116,6 +122,7 @@ class App(tk.Tk):
     AstViewer(self, json_path="out/ast.json")
 
   def _run_code(self):
+    self._clear_output()
     self._log_output("Ejecutando...\n(Sin lógica conectada aún)")
 
   def _load_file(self):
@@ -154,3 +161,7 @@ class App(tk.Tk):
     self.outputArea.config(state=tk.DISABLED)
     self.outputArea.see(tk.END)
 
+  def _clear_output(self: "App") -> None:
+      self.outputArea.config(state=tk.NORMAL)
+      self.outputArea.delete("1.0", tk.END)
+      self.outputArea.config(state=tk.DISABLED)

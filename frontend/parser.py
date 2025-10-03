@@ -9,10 +9,11 @@ from .ast import Node
 
 # Precedencias
 precedence = (
+    ('left', 'O'),
+    ('left', 'Y'),
     ('left', '+', '-'),
     ('left', '*', '/'),
     ('right', 'UMINUS'),
-    ('left', 'Y', 'O'),
     ('nonassoc', 'IGUALES', 'MAYORQ', 'MENORQ'),
 )
 
@@ -29,6 +30,27 @@ def p_stmt_list_more(p):
     "stmt_list : stmt_list stmt"
     p[1].add(p[2])
     p[0] = p[1]
+
+# --- Lista de parámetros ---
+def p_param_list_one(p):
+    "param_list : ID"
+    p[0] = Node("PARAMS").add(Node("ID", p[1], line=p.lineno(1)))
+
+def p_param_list_more(p):
+    "param_list : param_list ID"
+    p[1].add(Node("ID", p[2], line=p.lineno(2)))
+    p[0] = p[1]
+
+def p_param_list_empty(p):
+    "param_list : "
+    # ¡OJO!: no uses p.lineno(1) aquí porque la producción está vacía.
+    p[0] = Node("PARAMS")
+
+
+# --- Bloques con corchetes ---
+def p_block(p):
+    "block : '[' stmt_list ']'"
+    p[0] = p[2]
 
 def p_stmt_move_turn(p):
     """stmt : AV expr
@@ -99,9 +121,75 @@ def p_stmt_poncl_str(p):
     "stmt : PONCL STRING"
     p[0] = Node("PONCL", line=p.lineno(1)).add(Node("STR", p[2], line=p.lineno(2)))
 
-def p_stmt_poncl_str(p):
-    "stmt : PONCL STRING"
-    p[0] = Node("PONCL", line=p.lineno(1)).add(Node("STR", p[2], line=p.lineno(2)))
+def p_stmt_espera(p):
+    "stmt : ESPERA expr"
+    p[0] = Node("ESPERA", line=p.lineno(1)).add(p[2])
+
+# --- Procedimiento con parámetros ---
+def p_stmt_para_def_args(p):
+    "stmt : PARA ID '[' param_list ']' stmt_list FIN"
+    # índices: 1:PARA 2:ID 3:'[' 4:param_list 5:']' 6:stmt_list 7:FIN
+    name = Node("ID", p[2], line=p.lineno(2))
+    p[0] = Node("PARA", line=p.lineno(1)).add(name, p[4], p[6])
+
+# --- Llamada a procedimiento ---
+def p_stmt_proc_call_noargs(p):
+    "stmt : ID"
+    # llamada sin args (compatibilidad)
+    p[0] = Node("CALL", line=p.lineno(1)).add(Node("ID", p[1], line=p.lineno(1)))
+
+def p_stmt_proc_call_args(p):
+    "stmt : ID '[' arg_values ']'"
+    name = Node("ID", p[1], line=p.lineno(1))
+    p[0] = Node("CALL", line=p.lineno(1)).add(name, p[3])
+
+# Lista de argumentos de llamada
+def p_arg_values_one(p):
+    "arg_values : expr"
+    p[0] = Node("ARGS").add(p[1])
+
+def p_arg_values_more(p):
+    "arg_values : arg_values expr"
+    p[1].add(p[2]); p[0] = p[1]
+
+def p_arg_values_empty(p):
+    "arg_values : "
+    p[0] = Node("ARGS")
+
+def p_stmt_centro(p):
+    "stmt : CENTRO"
+    p[0] = Node("CENTRO", line=p.lineno(1))
+
+# --- Control de flujo con corchetes ---
+def p_stmt_ejecuta_block(p):
+    "stmt : EJECUTA block"
+    p[0] = Node("EJECUTA", line=p.lineno(1)).add(p[2])
+
+def p_stmt_repite_block(p):
+    "stmt : REPITE expr block"
+    p[0] = Node("REPITE", line=p.lineno(1)).add(p[2], p[3])
+
+def p_stmt_si_block(p):
+    "stmt : SI bexpr block"
+    p[0] = Node("SI", line=p.lineno(1)).add(p[2], p[3])
+
+def p_stmt_mientras_block(p):
+    "stmt : MIENTRAS bexpr block"
+    p[0] = Node("MIENTRAS", line=p.lineno(1)).add(p[2], p[3])
+
+def p_stmt_haz_hasta_block(p):
+    "stmt : HAZ_HASTA block HASTA bexpr"
+    p[0] = Node("HAZ_HASTA", line=p.lineno(1)).add(p[2], p[4])
+
+def p_stmt_haz_mientras_block(p):
+    "stmt : HAZ_MIENTRAS block MIENTRAS bexpr"
+    p[0] = Node("HAZ_MIENTRAS", line=p.lineno(1)).add(p[2], p[4])
+
+def p_stmt_si(p):
+    "stmt : SI expr HAZ stmt_list FIN"
+    # Nodo SI con dos hijos: condición y bloque de sentencias
+    p[0] = Node("SI", line=p.lineno(1)).add(p[2], p[4])
+
 
 # Expresiones
 def p_expr_binop(p):
@@ -131,62 +219,12 @@ def p_expr_id(p):
     "expr : ID"
     p[0] = Node("ID", p[1], line=p.lineno(1))
 
-def p_stmt_haz_block(p):
-    "stmt : HAZ stmt_list FIN"
-    p[0] = Node("HAZ", line=p.lineno(1)).add(p[2])
-
-def p_stmt_haz_hasta(p):
-    # do ... until (haz ... hasta expr)
-    "stmt : HAZ stmt_list HASTA expr"
-    p[0] = Node("HAZ_HASTA", line=p.lineno(1)).add(p[2], p[4])
-
-def p_stmt_haz_mientras(p):
-    # do ... while (haz ... mientras expr)
-    "stmt : HAZ_MIENTRAS stmt_list MIENTRAS expr"
-    p[0] = Node("HAZ_MIENTRAS", line=p.lineno(1)).add(p[2], p[4])
-
-def p_stmt_espera(p):
-    "stmt : ESPERA expr"
-    p[0] = Node("ESPERA", line=p.lineno(1)).add(p[2])
-
-def p_stmt_para(p):
-    # sintaxis propuesta: para ID = expr HASTA expr HAZ stmt_list FIN
-    "stmt : PARA ID '=' expr HASTA expr HAZ stmt_list FIN"
-    p[0] = Node("PARA", line=p.lineno(1)).add(
-        Node("ID", p[2], line=p.lineno(2)), p[4], p[6], p[8]
-    )
-
-def p_stmt_mientras(p):
-    # mientras expr haz ... fin
-    "stmt : MIENTRAS expr HAZ stmt_list FIN"
-    p[0] = Node("MIENTRAS", line=p.lineno(1)).add(p[2], p[4])
-
-def p_stmt_repite(p):
-    # repite expr haz ... fin  (repite N veces)
-    "stmt : REPITE expr HAZ stmt_list FIN"
-    p[0] = Node("REPITE", line=p.lineno(1)).add(p[2], p[4])
-
-def p_stmt_ejecuta(p):
-    # ejecuta ID  (llamar a procedimiento)
-    "stmt : EJECUTA ID"
-    p[0] = Node("EJECUTA", line=p.lineno(1)).add(Node("ID", p[2], line=p.lineno(2)))
-
-def p_stmt_centro(p):
-    "stmt : CENTRO"
-    p[0] = Node("CENTRO", line=p.lineno(1))
-
-def p_expr_comp(p):
-    """expr : expr IGUALES expr
-            | expr MAYORQ expr
-            | expr MENORQ expr"""
-    # Nodo para operadores relacionales
-    p[0] = Node("RELOP", p[2], line=p.lineno(2)).add(p[1], p[3])
-
+"""
 def p_expr_logic(p):
-    """expr : expr Y expr
-            | expr O expr"""
+    """"""expr : expr Y expr
+            | expr O expr""""""
     p[0] = Node("LOGIC", p[2], line=p.lineno(2)).add(p[1], p[3])
-
+"""
 def p_expr_producto(p):
     "expr : PRODUCTO expr expr"
     p[0] = Node("BINOP", '*', line=p.lineno(1)).add(p[2], p[3])
@@ -207,19 +245,50 @@ def p_expr_potencia(p):
     "expr : POTENCIA expr expr"
     p[0] = Node("POW", line=p.lineno(1)).add(p[2], p[3])
 
-# azar: sin argumentos => número aleatorio en [0,1]
-def p_expr_azar_simple(p):
-    "expr : AZAR"
-    p[0] = Node("AZAR", line=p.lineno(1))
 
-def p_expr_azar_range(p):
-    "expr : AZAR expr expr"
-    p[0] = Node("AZAR_RANGE", line=p.lineno(1)).add(p[2], p[3])
+def p_expr_azar_uno(p):
+    "expr : AZAR expr"
+    p[0] = Node("CALL", "AZAR", line=p.lineno(1)).add(p[2])
 
-def p_stmt_si(p):
-    "stmt : SI expr HAZ stmt_list FIN"
-    # Nodo SI con dos hijos: condición y bloque de sentencias
-    p[0] = Node("SI", line=p.lineno(1)).add(p[2], p[4])
+
+
+# ========================
+# Booleanas (bexpr)
+# ========================
+
+# Paréntesis en booleanas
+def p_bexpr_paren(p):
+    "bexpr : '(' bexpr ')'"
+    p[0] = p[2]
+
+# Conectores lógicos (entre booleanas)
+def p_bexpr_boolbin(p):
+    """bexpr : bexpr Y bexpr
+             | bexpr O bexpr"""
+    p[0] = Node("BOOLBIN", p[2], line=p.lineno(2)).add(p[1], p[3])
+
+# Predicados relacionales INFJOS: a IGUALES? b, a MENORQ? b, a MAYORQ? b
+def p_bexpr_rel_infix(p):
+    """bexpr : expr IGUALES expr
+             | expr MENORQ expr
+             | expr MAYORQ expr"""
+    p[0] = Node("RELOP", p[2], line=p.lineno(2)).add(p[1], p[3])
+
+# Predicados relacionales PREFIJO: IGUALES? a b, MENORQ? a b, MAYORQ? a b
+def p_bexpr_rel_prefix_eq(p):
+    "bexpr : IGUALES expr expr"
+    p[0] = Node("RELOP", 'IGUALES', line=p.lineno(1)).add(p[2], p[3])
+
+def p_bexpr_rel_prefix_lt(p):
+    "bexpr : MENORQ expr expr"
+    p[0] = Node("RELOP", 'MENORQ', line=p.lineno(1)).add(p[2], p[3])
+
+def p_bexpr_rel_prefix_gt(p):
+    "bexpr : MAYORQ expr expr"
+    p[0] = Node("RELOP", 'MAYORQ', line=p.lineno(1)).add(p[2], p[3])
+
+
+
 
 # Errores
 def p_error(t):
