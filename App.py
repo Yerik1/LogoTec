@@ -7,6 +7,7 @@ from frontend.parser import parse_text
 from frontend.semantics import analyze
 from frontend.exporter import save_ast_json, save_diags_txt
 from frontend.ast_viewer_tk import AstViewer
+from ASTOptimizer import ASTOptimizer
 
 class App(tk.Tk):
   def __init__(self: "App") -> None:
@@ -17,6 +18,11 @@ class App(tk.Tk):
 
     self.title("LogoTec IDE")
     self.minsize(1000, 600)
+    
+    # Almacenar AST y AST optimizado para comparación
+    self.current_ast = None
+    self.optimized_ast = None
+    
     self._create_widgets()
 
   def _create_widgets(self: "App") -> None:
@@ -37,6 +43,7 @@ class App(tk.Tk):
 
     for text, cmd in [
         ("Compilar", self._compile_code),
+        ("Optimizar", self._optimize_code),
         ("Mostrar AST", self._show_ast),
         ("Ejecutar", self._run_code),
         ("Cargar Archivo", self._load_file),
@@ -91,8 +98,9 @@ class App(tk.Tk):
 
           # 2. Parsear el texto → AST
           ast = parse_text(source_code)
+          self.current_ast = ast  # Guardar para optimización
+          
           # Salidas para la GUI
-
 
           # 3. Analizar semánticamente
           diags = analyze(ast)
@@ -108,18 +116,112 @@ class App(tk.Tk):
           self._log_output("=== Compilación completada ===")
           self._log_output("\n-- Diagnósticos --")
           self._log_output(diags.pretty())
+          self._log_output("\n-- AST generado --")
+          self._log_output("AST guardado en: out/ast.json")
+          self._log_output("Use 'Mostrar AST' para visualizar")
+          self._log_output("\n-- Optimización --")
+          self._log_output("Use 'Optimizar' para optimizar el AST generado")
+
+
 
       except Exception as e:
           messagebox.showerror("Error de compilación", str(e))
           self._clear_output()
           self._log_output(f"Error en compilación: {e}")
 
+  def _optimize_code(self):
+      """
+      Optimiza el AST actual usando el optimizador.
+      """
+      try:
+          if self.current_ast is None:
+              self._clear_output()
+              self._log_output("No hay AST para optimizar. Compile primero el código.")
+              return
+
+          # Crear el optimizador
+          optimizer = ASTOptimizer()
+          
+          # Obtener estadísticas antes de optimizar
+          self._clear_output()
+          self._log_output("=== Iniciando Optimización ===")
+          self._log_output("\n-- AST Original --")
+          self._log_output("Estructura original:")
+          self._log_output(self.current_ast.pretty())
+          
+          # Optimizar el AST
+          self.optimized_ast = optimizer.optimize(self.current_ast)
+          
+          # Obtener estadísticas
+          stats = optimizer.get_optimization_stats()
+          
+          # Mostrar resultados
+          self._log_output(f"\n-- Resultados de Optimización --")
+          self._log_output(f"Optimizaciones aplicadas: {stats['optimizations_applied']}")
+          
+          if stats['optimizations_applied'] > 0:
+              self._log_output("\n-- AST Optimizado --")
+              self._log_output("Estructura optimizada:")
+              self._log_output(self.optimized_ast.pretty())
+              
+              # Guardar AST optimizado
+              os.makedirs("out", exist_ok=True)
+              save_ast_json(self.optimized_ast, "out/ast_optimized.json")
+              self._log_output("\nAST optimizado guardado en: out/ast_optimized.json")
+              
+              # Analizar semánticamente el AST optimizado
+              try:
+                  optimized_diags = analyze(self.optimized_ast)
+                  save_diags_txt(optimized_diags, "out/diagnostics_optimized.txt")
+                  self._log_output("Diagnósticos del AST optimizado guardados en: out/diagnostics_optimized.txt")
+                  
+                  # Mostrar diagnósticos si hay errores
+                  if optimized_diags.errors or optimized_diags.warnings:
+                      self._log_output("\n-- Diagnósticos del AST Optimizado --")
+                      self._log_output(optimized_diags.pretty())
+                  else:
+                      self._log_output("✓ AST optimizado sin errores semánticos")
+                      
+              except Exception as analysis_error:
+                  self._log_output(f"⚠ Error en análisis semántico del AST optimizado: {analysis_error}")
+          else:
+              self._log_output("No se aplicaron optimizaciones - el código ya está optimizado")
+          
+          self._log_output("\n=== Optimización Completada ===")
+
+      except Exception as e:
+          messagebox.showerror("Error de optimización", str(e))
+          self._clear_output()
+          self._log_output(f"Error en optimización: {e}")
+
   def _show_ast(self):
     """
-    Carga directamente el archivo out/ast.json y muestra un ejemplo
-    del contenido en forma de árbol simplificado.
+    Muestra el AST. Si hay AST optimizado, permite elegir cuál mostrar.
     """
-    AstViewer(self, json_path="out/ast.json")
+    if not os.path.exists("out/ast.json"):
+        messagebox.showwarning("Advertencia", "No hay AST para mostrar. Compile primero el código.")
+        return
+    
+    # Si hay AST optimizado, preguntar cuál mostrar
+    if self.optimized_ast is not None and os.path.exists("out/ast_optimized.json"):
+        choice = messagebox.askyesnocancel(
+            "Seleccionar AST", 
+            "¿Qué AST desea mostrar?\n\nSí = AST Original\nNo = AST Optimizado\nCancelar = Ambos (comparar)"
+        )
+        
+        if choice is True:
+            # Mostrar AST original
+            AstViewer(self, json_path="out/ast.json", title="AST Original")
+        elif choice is False:
+            # Mostrar AST optimizado
+            AstViewer(self, json_path="out/ast_optimized.json", title="AST Optimizado")
+        elif choice is None:
+            # Mostrar ambos para comparar
+            AstViewer(self, json_path="out/ast.json", title="AST Original")
+            AstViewer(self, json_path="out/ast_optimized.json", title="AST Optimizado")
+    else:
+        # Solo hay AST original
+        AstViewer(self, json_path="out/ast.json", title="AST Original")
 
   def _run_code(self):
     self._clear_output()

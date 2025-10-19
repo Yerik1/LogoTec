@@ -1,0 +1,23 @@
+// Ejemplo de programa Logo para optimización
+INIC x = 2 + 3
+INIC y = x * 1
+INIC z = y + 0
+
+AV 10 + 5
+RE 0
+GD 90 * 1
+GI 0
+
+REPITE 1 [
+    AV 20
+    GD 90
+]
+
+REPITE 0 [
+    AV 100
+    GD 45
+]
+
+// Más optimizaciones
+INIC w = 5 - 5
+AV w + 10
