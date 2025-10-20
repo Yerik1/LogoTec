@@ -1,3 +1,15 @@
-// CONSTANT FOLDING
+// ===========================================
+// TEST: CONSTANT FOLDING (Doblado de Constantes)
+// ===========================================
+// Este test verifica que el optimizador evalúe expresiones
+// aritméticas con valores constantes en tiempo de compilación
+
+// Expresión con múltiples operaciones y precedencia
+// Original: 2 + 3 * 4 
+// Optimizado: 2 + 12 = 14
 INIC xex = 2 + 3 * 4    
+
+// Expresión con paréntesis y división
+// Original: (10 - 5) / 2
+// Optimizado: 5 / 2 = 2.5
 INIC yey = (10 - 5) / 2

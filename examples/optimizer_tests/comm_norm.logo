@@ -1,3 +1,17 @@
-// Command Normalization
+// ===========================================
+// TEST: COMMAND NORMALIZATION (Normalización de Comandos)
+// ===========================================
+// Este test verifica que el optimizador convierta comandos
+// equivalentes a su forma más eficiente o canónica
+
+// Retroceder 10 pasos
+// Original: RE 10
+// Optimizado: AV -10 (avanzar en dirección opuesta)
+// Razón: AV con valor negativo es más eficiente que RE
 RE 10 
+
+// Girar a la izquierda 45 grados  
+// Original: GI 45
+// Optimizado: GD -45 (girar a la derecha en dirección opuesta)
+// Razón: GD con valor negativo es más eficiente que GI
 GI 45 

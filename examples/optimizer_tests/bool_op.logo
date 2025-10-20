@@ -1,1 +1,71 @@
-// Boolean Logic Optimization
+// ===========================================
+// TEST: BOOLEAN LOGIC OPTIMIZATION (Optimización de Lógica Booleana)
+// ===========================================
+// Este test verifica que el optimizador evalúe condiciones booleanas
+// constantes y simplifique estructuras condicionales
+
+// === CASOS BÁSICOS DE OPTIMIZACIÓN BOOLEANA ===
+
+// Caso 1: Condición siempre verdadera (constant folding)
+// Comparación: 5 iguales? 5 → true (evaluado en compile-time)
+// Original: SI 5 iguales? 5 [ AV 40 ]
+// Optimizado: AV 40 (ejecutar directamente, eliminar condicional)
+SI 5 iguales? 5 [
+    AV 40
+]
+
+// Caso 2: Condición siempre falsa (dead code elimination)
+// Comparación: 3 mayorque? 7 → false (3 > 7 es falso)
+// Original: SI 3 mayorque? 7 [ GI 30 ]
+// Optimizado: [bloque eliminado completamente]
+SI 3 mayorque? 7 [
+    GI 30
+]
+
+// Caso 3: Condición verdadera con command normalization
+// Comparación: 10 menorque? 20 → true (10 < 20 es verdadero)
+// Original: SI 10 menorque? 20 [ RE 35 ]
+// Optimizado: AV -35 (RE 35 normalizado + condicional eliminado)
+SI 10 menorque? 20 [
+    RE 35
+]
+
+// Caso 4: Condición falsa con múltiples optimizaciones
+// Comparación: 8 menorque? 5 → false (8 < 5 es falso)
+// Original: SI 8 menorque? 5 [ GD 90 ]
+// Optimizado: [bloque eliminado por dead code elimination]
+SI 8 menorque? 5 [
+    GD 90
+]
+
+// === CASOS DE OPTIMIZACIÓN COMBINADA ===
+
+// Arithmetic + Boolean: constant folding en condición y comando
+SI 6 iguales? 6 [
+    AV 10 + 5
+    RE 0
+    GD 45 * 2
+]
+
+// Multiple constant comparisons
+SI 1 iguales? 1 [
+    INIC x = 2 + 3
+    AV x * 1
+]
+
+SI 9 mayorque? 15 [
+    INIC z = 7 - 7
+    GI z + 45
+]
+
+// === CASOS PARA PRUEBAS FUTURAS (comentados) ===
+// Estos requieren soporte para operadores booleanos Y/O
+// que pueden requerir modificaciones al parser
+
+// SI 1 iguales? 1 y 5 mayorque? 3 [
+//     AV 10
+// ]
+//
+// SI 3 mayorque? 5 o 7 mayorque? 4 [  
+//     RE 15
+// ]
