@@ -43,7 +43,6 @@ class App(tk.Tk):
 
     for text, cmd in [
         ("Compilar", self._compile_code),
-        ("Optimizar", self._optimize_code),
         ("Mostrar AST", self._show_ast),
         ("Ejecutar", self._run_code),
         ("Cargar Archivo", self._load_file),
@@ -98,29 +97,50 @@ class App(tk.Tk):
 
           # 2. Parsear el texto → AST
           ast = parse_text(source_code)
-          self.current_ast = ast  # Guardar para optimización
+          self.current_ast = ast  # Guardar AST original
           
-          # Salidas para la GUI
+          # 3. Optimizar automáticamente el AST
+          optimizer = ASTOptimizer()
+          self.optimized_ast = optimizer.optimize(ast)
+          optimization_stats = optimizer.get_optimization_stats()
 
-          # 3. Analizar semánticamente
+          # 4. Analizar semánticamente (AST original)
           diags = analyze(ast)
+          
+          # Analizar AST optimizado también
+          optimized_diags = analyze(self.optimized_ast)
 
-          # 4. Guardar resultados en carpeta out/
+          # 5. Guardar resultados en carpeta out/
           os.makedirs("out", exist_ok=True)
 
           save_ast_json(ast, "out/ast.json")
+          save_ast_json(self.optimized_ast, "out/ast_optimized.json")
           save_diags_txt(diags, "out/diagnostics.txt")
+          save_diags_txt(optimized_diags, "out/diagnostics_optimized.txt")
 
-          # 5. Mostrar feedback en consola GUI
+          # 6. Mostrar feedback en consola GUI
           self._clear_output()
           self._log_output("=== Compilación completada ===")
-          self._log_output("\n-- Diagnósticos --")
+          self._log_output("\n-- Diagnósticos (AST Original) --")
           self._log_output(diags.pretty())
-          self._log_output("\n-- AST generado --")
-          self._log_output("AST guardado en: out/ast.json")
-          self._log_output("Use 'Mostrar AST' para visualizar")
-          self._log_output("\n-- Optimización --")
-          self._log_output("Use 'Optimizar' para optimizar el AST generado")
+          
+          self._log_output("\n-- Optimización Automática --")
+          self._log_output(f"Optimizaciones aplicadas: {optimization_stats['optimizations_applied']}")
+          
+          if optimization_stats['optimizations_applied'] > 0:
+              self._log_output("✓ AST optimizado generado")
+              self._log_output("\n-- Diagnósticos (AST Optimizado) --")
+              if optimized_diags.errors or optimized_diags.warnings:
+                  self._log_output(optimized_diags.pretty())
+              else:
+                  self._log_output("✓ Sin errores en AST optimizado")
+          else:
+              self._log_output("ℹ No se aplicaron optimizaciones - el código ya está optimizado")
+          
+          self._log_output("\n-- Archivos generados --")
+          self._log_output("AST original: out/ast.json")
+          self._log_output("AST optimizado: out/ast_optimized.json")
+          self._log_output("Use 'Mostrar AST' para visualizar y comparar")
 
 
 
@@ -129,96 +149,77 @@ class App(tk.Tk):
           self._clear_output()
           self._log_output(f"Error en compilación: {e}")
 
-  def _optimize_code(self):
-      """
-      Optimiza el AST actual usando el optimizador.
-      """
-      try:
-          if self.current_ast is None:
-              self._clear_output()
-              self._log_output("No hay AST para optimizar. Compile primero el código.")
-              return
-
-          # Crear el optimizador
-          optimizer = ASTOptimizer()
-          
-          # Obtener estadísticas antes de optimizar
-          self._clear_output()
-          self._log_output("=== Iniciando Optimización ===")
-          self._log_output("\n-- AST Original --")
-          self._log_output("Estructura original:")
-          self._log_output(self.current_ast.pretty())
-          
-          # Optimizar el AST
-          self.optimized_ast = optimizer.optimize(self.current_ast)
-          
-          # Obtener estadísticas
-          stats = optimizer.get_optimization_stats()
-          
-          # Mostrar resultados
-          self._log_output(f"\n-- Resultados de Optimización --")
-          self._log_output(f"Optimizaciones aplicadas: {stats['optimizations_applied']}")
-          
-          if stats['optimizations_applied'] > 0:
-              self._log_output("\n-- AST Optimizado --")
-              self._log_output("Estructura optimizada:")
-              self._log_output(self.optimized_ast.pretty())
-              
-              # Guardar AST optimizado
-              os.makedirs("out", exist_ok=True)
-              save_ast_json(self.optimized_ast, "out/ast_optimized.json")
-              self._log_output("\nAST optimizado guardado en: out/ast_optimized.json")
-              
-              # Analizar semánticamente el AST optimizado
-              try:
-                  optimized_diags = analyze(self.optimized_ast)
-                  save_diags_txt(optimized_diags, "out/diagnostics_optimized.txt")
-                  self._log_output("Diagnósticos del AST optimizado guardados en: out/diagnostics_optimized.txt")
-                  
-                  # Mostrar diagnósticos si hay errores
-                  if optimized_diags.errors or optimized_diags.warnings:
-                      self._log_output("\n-- Diagnósticos del AST Optimizado --")
-                      self._log_output(optimized_diags.pretty())
-                  else:
-                      self._log_output("✓ AST optimizado sin errores semánticos")
-                      
-              except Exception as analysis_error:
-                  self._log_output(f"⚠ Error en análisis semántico del AST optimizado: {analysis_error}")
-          else:
-              self._log_output("No se aplicaron optimizaciones - el código ya está optimizado")
-          
-          self._log_output("\n=== Optimización Completada ===")
-
-      except Exception as e:
-          messagebox.showerror("Error de optimización", str(e))
-          self._clear_output()
-          self._log_output(f"Error en optimización: {e}")
 
   def _show_ast(self):
     """
-    Muestra el AST. Si hay AST optimizado, permite elegir cuál mostrar.
+    Muestra el AST permitiendo elegir entre original y optimizado.
     """
     if not os.path.exists("out/ast.json"):
         messagebox.showwarning("Advertencia", "No hay AST para mostrar. Compile primero el código.")
         return
     
-    # Si hay AST optimizado, preguntar cuál mostrar
+    # Si hay AST optimizado, mostrar opciones
     if self.optimized_ast is not None and os.path.exists("out/ast_optimized.json"):
-        choice = messagebox.askyesnocancel(
-            "Seleccionar AST", 
-            "¿Qué AST desea mostrar?\n\nSí = AST Original\nNo = AST Optimizado\nCancelar = Ambos (comparar)"
-        )
+        # Crear ventana de selección personalizada
+        selection_window = tk.Toplevel(self)
+        selection_window.title("Seleccionar AST")
+        selection_window.geometry("400x200")
+        selection_window.resizable(False, False)
+        selection_window.transient(self)
+        selection_window.grab_set()
         
-        if choice is True:
-            # Mostrar AST original
+        # Centrar la ventana
+        selection_window.geometry("+%d+%d" % (self.winfo_rootx() + 50, self.winfo_rooty() + 50))
+        
+        # Título
+        title_label = ttk.Label(selection_window, text="Seleccione el AST a visualizar:", font=("Arial", 12, "bold"))
+        title_label.pack(pady=20)
+        
+        # Frame para botones
+        button_frame = ttk.Frame(selection_window)
+        button_frame.pack(pady=10)
+        
+        # Variable para almacenar la elección
+        choice = tk.StringVar()
+        
+        def make_choice(value):
+            choice.set(value)
+            selection_window.destroy()
+        
+        # Botones de selección
+        original_btn = ttk.Button(button_frame, text="AST Original", 
+                                command=lambda: make_choice("original"), width=15)
+        original_btn.pack(side=tk.LEFT, padx=10)
+        
+        optimized_btn = ttk.Button(button_frame, text="AST Optimizado", 
+                                 command=lambda: make_choice("optimized"), width=15)
+        optimized_btn.pack(side=tk.LEFT, padx=10)
+        
+        compare_btn = ttk.Button(button_frame, text="Comparar Ambos", 
+                               command=lambda: make_choice("both"), width=15)
+        compare_btn.pack(side=tk.LEFT, padx=10)
+        
+        # Info adicional
+        info_text = ("AST Original: Estructura tal como fue parseada\n"
+                    "AST Optimizado: Estructura después de aplicar optimizaciones\n"
+                    "Comparar: Muestra ambos ASTs en ventanas separadas")
+        info_label = ttk.Label(selection_window, text=info_text, justify=tk.CENTER, foreground="gray")
+        info_label.pack(pady=10)
+        
+        # Esperar a que se haga la elección
+        selection_window.wait_window()
+        
+        # Procesar la elección
+        if choice.get() == "original":
             AstViewer(self, json_path="out/ast.json", title="AST Original")
-        elif choice is False:
-            # Mostrar AST optimizado
+        elif choice.get() == "optimized":
             AstViewer(self, json_path="out/ast_optimized.json", title="AST Optimizado")
-        elif choice is None:
-            # Mostrar ambos para comparar
-            AstViewer(self, json_path="out/ast.json", title="AST Original")
-            AstViewer(self, json_path="out/ast_optimized.json", title="AST Optimizado")
+        elif choice.get() == "both":
+            # Mostrar ambos con un pequeño desplazamiento
+            viewer1 = AstViewer(self, json_path="out/ast.json", title="AST Original")
+            viewer1.geometry("+100+100")  # Posicionar primera ventana
+            viewer2 = AstViewer(self, json_path="out/ast_optimized.json", title="AST Optimizado")
+            viewer2.geometry("+500+100")  # Posicionar segunda ventana con offset
     else:
         # Solo hay AST original
         AstViewer(self, json_path="out/ast.json", title="AST Original")

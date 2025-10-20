@@ -55,15 +55,19 @@ x IGUALES x  →    true  (para variables simples)
 
 ## Cómo Usar el Optimizador
 
-### En la Aplicación GUI:
+### En la Aplicación GUI
 
 1. **Escribir código**: Escribe tu programa Logo en el editor
-2. **Compilar**: Haz clic en "Compilar" para generar el AST
-3. **Optimizar**: Haz clic en "Optimizar" para aplicar optimizaciones
-4. **Ver resultados**: El optimizador mostrará:
-   - Número de optimizaciones aplicadas
-   - AST original vs. AST optimizado
+2. **Compilar**: Haz clic en "Compilar" para generar y optimizar automáticamente el AST
+3. **Ver resultados**: Durante la compilación se mostrará:
+   - Diagnósticos del AST original
+   - Número de optimizaciones aplicadas automáticamente
    - Análisis semántico del código optimizado
+   - Archivos generados (original y optimizado)
+4. **Visualizar AST**: Haz clic en "Mostrar AST" y elige:
+   - **AST Original**: Estructura tal como fue parseada
+   - **AST Optimizado**: Estructura después de aplicar optimizaciones
+   - **Comparar Ambos**: Visualizar ambos ASTs lado a lado
 
 ### Desde Código Python:
 
