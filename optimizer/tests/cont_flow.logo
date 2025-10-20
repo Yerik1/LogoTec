@@ -1,0 +1,14 @@
+// ===========================================
+// TEST: CONTROL FLOW OPTIMIZATION (Optimización de Flujo de Control)
+// ===========================================
+// Este test verifica que el optimizador elimine estructuras de
+// control que nunca se ejecutarán debido a condiciones constantes
+
+// Variable de prueba
+INIC xex = 2
+
+// Bucle que no se ejecutará nunca (0 iteraciones)
+// Original: REPITE 0 [ INC [xex] ]
+// Optimizado: [eliminado completamente]
+// Razón: Un bucle con 0 repeticiones nunca ejecuta su cuerpo
+REPITE 0 [ INC [xex] ]

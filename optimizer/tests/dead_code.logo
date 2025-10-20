@@ -1,0 +1,23 @@
+// ===========================================
+// TEST: DEAD CODE ELIMINATION (Eliminación de Código Muerto)
+// ===========================================
+// Este test verifica que el optimizador elimine instrucciones
+// que no tienen efecto visible en el programa
+
+// Variable que se mantiene (no es código muerto)
+INIC xex = 2  
+
+// Avanzar 0 pasos - no tiene efecto, debería eliminarse
+// Original: AV 0
+// Optimizado: [eliminado]
+AV 0
+
+// Girar 0 grados - no tiene efecto, debería eliminarse  
+// Original: GD 0
+// Optimizado: [eliminado]
+GD 0
+
+// Retroceder 0 pasos - no tiene efecto, debería eliminarse
+// Original: RE 0  
+// Optimizado: [eliminado]
+RE 0

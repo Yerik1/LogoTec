@@ -1,12 +1,12 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import json
 import os
 
 from frontend.parser import parse_text
 from frontend.semantics import analyze
 from frontend.exporter import save_ast_json, save_diags_txt
 from frontend.ast_viewer_tk import AstViewer
+from optimizer.ASTOptimizer import ASTOptimizer
 
 class App(tk.Tk):
   def __init__(self: "App") -> None:
@@ -17,6 +17,11 @@ class App(tk.Tk):
 
     self.title("LogoTec IDE")
     self.minsize(1000, 600)
+    
+    # Almacenar AST y AST optimizado para comparación
+    self.original_ast = None
+    self.optimized_ast = None
+    
     self._create_widgets()
 
   def _create_widgets(self: "App") -> None:
@@ -90,36 +95,98 @@ class App(tk.Tk):
               return
 
           # 2. Parsear el texto → AST
-          ast = parse_text(source_code)
-          # Salidas para la GUI
+          self.original_ast = parse_text(source_code)
 
+          # 3. Analizar semánticamente (AST original)
+          diags = analyze(self.original_ast)
+          if diags.has_errors():
+              self._clear_output()
+              self._log_output("Errores semánticos encontrados en el AST original:")
+              self._log_output(diags.pretty())
+              return
 
-          # 3. Analizar semánticamente
-          diags = analyze(ast)
+          # 4. Optimizar el AST
+          optimizer = ASTOptimizer()
+          self.optimized_ast = optimizer.optimize(self.original_ast)
+          optimization_stats = optimizer.get_optimization_stats()
 
-          # 4. Guardar resultados en carpeta out/
+          # 5. Guardar resultados en carpeta out/
           os.makedirs("out", exist_ok=True)
 
-          save_ast_json(ast, "out/ast.json")
+          save_ast_json(self.original_ast, "out/ast.json")
+          save_ast_json(self.optimized_ast, "out/ast_optimized.json")
           save_diags_txt(diags, "out/diagnostics.txt")
 
-          # 5. Mostrar feedback en consola GUI
+          # 6. Mostrar feedback en consola GUI
           self._clear_output()
           self._log_output("=== Compilación completada ===")
           self._log_output("\n-- Diagnósticos --")
           self._log_output(diags.pretty())
-
+          
       except Exception as e:
           messagebox.showerror("Error de compilación", str(e))
           self._clear_output()
           self._log_output(f"Error en compilación: {e}")
 
+
   def _show_ast(self):
     """
-    Carga directamente el archivo out/ast.json y muestra un ejemplo
-    del contenido en forma de árbol simplificado.
+    Muestra el AST permitiendo elegir entre original y optimizado.
     """
-    AstViewer(self, json_path="out/ast.json")
+    if not os.path.exists("out/ast.json"):
+        messagebox.showwarning("Advertencia", "No hay AST para mostrar. Compile primero el código.")
+        return
+    
+    # Si hay AST optimizado, mostrar opciones
+    if self.optimized_ast is not None and os.path.exists("out/ast_optimized.json"):
+        # Crear ventana de selección personalizada
+        selection_window = tk.Toplevel(self)
+        selection_window.title("Seleccionar AST")
+        selection_window.geometry("600x200")
+        selection_window.resizable(False, False)
+        selection_window.transient(self)
+        selection_window.grab_set()
+        
+        # Centrar la ventana
+        selection_window.geometry("+%d+%d" % (self.winfo_rootx() + 50, self.winfo_rooty() + 50))
+        
+        # Título
+        title_label = ttk.Label(selection_window, text="Seleccione el AST a visualizar:", font=("Arial", 12, "bold"))
+        title_label.pack(pady=20)
+        
+        # Frame para botones
+        button_frame = ttk.Frame(selection_window)
+        button_frame.pack(pady=10)
+        
+        # Variable para almacenar la elección
+        choice = tk.StringVar()
+        
+        def make_choice(value):
+            choice.set(value)
+            selection_window.destroy()
+        
+        # Botones de selección
+        original_btn = ttk.Button(button_frame, text="AST Original", 
+                                command=lambda: make_choice("original"), width=18)
+        original_btn.pack(side=tk.LEFT, padx=15)
+        
+        optimized_btn = ttk.Button(button_frame, text="AST Optimizado", 
+                                 command=lambda: make_choice("optimized"), width=18)
+        optimized_btn.pack(side=tk.LEFT, padx=15)
+        
+        # Esperar a que se haga la elección
+        selection_window.wait_window()
+        
+        # Procesar la elección
+        if choice.get() == "original":
+            viewer = AstViewer(self, json_path="out/ast.json", title="AST Original")
+        elif choice.get() == "optimized":
+            viewer = AstViewer(self, json_path="out/ast_optimized.json", title="AST Optimizado")
+
+    else:
+        # Solo hay AST original
+        viewer = AstViewer(self, json_path="out/ast.json")
+        viewer.title("AST Original")
 
   def _run_code(self):
     self._clear_output()
