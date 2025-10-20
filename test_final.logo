@@ -1,7 +1,0 @@
-INIC x = 2 + 3
-AV 10 + 5
-RE 0
-GD 90 * 1
-REPITE 1 [
-    AV 20
-]

@@ -1,0 +1,60 @@
+// Test de optimización de lógica booleana
+// Este archivo demuestra las optimizaciones de expresiones booleanas
+
+// === CASOS DE CONSTANT FOLDING ===
+
+// Comparación verdadera: 5 iguales? 5 → true
+// Resultado esperado: ejecutar siempre AV 40
+SI 5 iguales? 5 [
+    AV 40
+]
+
+// Comparación falsa: 3 mayorque? 7 → false  
+// Resultado esperado: eliminar bloque completo
+SI 3 mayorque? 7 [
+    GI 30
+]
+
+// Comparación verdadera: 10 menorque? 20 → true
+// Resultado esperado: ejecutar siempre RE 35 → AV -35
+SI 10 menorque? 20 [
+    RE 35
+]
+
+// Comparación falsa: 8 menorque? 5 → false
+// Resultado esperado: eliminar bloque completo  
+SI 8 menorque? 5 [
+    GD 90
+]
+
+// === CASOS DE OPTIMIZACIÓN COMBINADA ===
+
+// Arithmetic + Boolean: constant folding en condición y comando
+SI 6 iguales? 6 [
+    AV 10 + 5
+    RE 0
+    GD 45 * 2
+]
+
+// Multiple constant comparisons
+SI 1 iguales? 1 [
+    INIC x = 2 + 3
+    AV x * 1
+]
+
+SI 9 mayorque? 15 [
+    INIC z = 7 - 7
+    GI z + 45
+]
+
+// === CASOS PARA PRUEBAS FUTURAS (comentados) ===
+// Estos requieren soporte para operadores booleanos Y/O
+// que pueden requerir modificaciones al parser
+
+// SI 1 iguales? 1 y 5 mayorque? 3 [
+//     AV 10
+// ]
+//
+// SI 3 mayorque? 5 o 7 mayorque? 4 [  
+//     RE 15
+// ]

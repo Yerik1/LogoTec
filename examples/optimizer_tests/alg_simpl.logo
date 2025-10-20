@@ -1,0 +1,8 @@
+// Algebraic Simplification
+INIC xex = 2  
+
+INIC xex = xex + 0
+INIC xex = xex * 1
+INIC xex = xex * 0
+INIC xex = xex / 1
+INIC xex = xex - xex

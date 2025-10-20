@@ -1,0 +1,3 @@
+// Control Flow Optimzation
+INIC xex = 2
+REPITE 0 [ INC [xex] ]

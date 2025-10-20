@@ -93,9 +93,11 @@ def kind_color(kind: str) -> str:
 # Viewer Tkinter
 # -----------------------------------------------------------
 class AstViewer(tk.Toplevel):
-    def __init__(self, master=None, json_path: Optional[str]=None):
+    def __init__(self, master=None, json_path: Optional[str]=None, title: str="AST Viewer"):
         super().__init__(master)
-        self.title("AST Viewer")
+        self.title_text = title
+
+        self.title(self.title_text)
         self.geometry("980x680")
         self.configure(bg="#0B1220")
 
@@ -239,9 +241,9 @@ class AstViewer(tk.Toplevel):
 
     def _show_status(self, n: Optional[JNode]):
         if n is None:
-            self.title("AST Viewer")
+            self.title(self.title_text)
         else:
-            self.title(f"AST Viewer — {n.kind}"
+            self.title(f"{self.title_text} — {n.kind}"
                        + (f" ({n.value})" if n.value not in (None,"") else "")
                        + (f"  ·  línea {n.line}" if n.line else ""))
 

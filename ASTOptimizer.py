@@ -281,11 +281,11 @@ class ASTOptimizer:
         # Constant Folding
         if left.kind == "NUM" and right.kind == "NUM":
             try:
-                if op == 'IGUALES':
+                if op == 'iguales?' or op == 'IGUALES':
                     result = left.value == right.value
-                elif op == 'MENORQ':
+                elif op == 'menorque?' or op == 'MENORQ':
                     result = left.value < right.value
-                elif op == 'MAYORQ':
+                elif op == 'mayorque?' or op == 'MAYORQ':
                     result = left.value > right.value
                 else:
                     return Node(node.kind, node.value, [left, right], node.line)
@@ -296,12 +296,12 @@ class ASTOptimizer:
                 pass
         
         # x == x = true (solo para variables simples)
-        if op == 'IGUALES' and left.kind == "ID" and right.kind == "ID" and left.value == right.value:
+        if (op == 'iguales?' or op == 'IGUALES') and left.kind == "ID" and right.kind == "ID" and left.value == right.value:
             self.optimizations_applied += 1
             return Node("BOOL", True, [], node.line)
         
         # x < x = false, x > x = false
-        if (op == 'MENORQ' or op == 'MAYORQ') and left.kind == "ID" and right.kind == "ID" and left.value == right.value:
+        if (op == 'menorque?' or op == 'MENORQ' or op == 'mayorque?' or op == 'MAYORQ') and left.kind == "ID" and right.kind == "ID" and left.value == right.value:
             self.optimizations_applied += 1
             return Node("BOOL", False, [], node.line)
             

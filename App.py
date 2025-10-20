@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import json
 import os
 
 from frontend.parser import parse_text
@@ -20,7 +19,7 @@ class App(tk.Tk):
     self.minsize(1000, 600)
     
     # Almacenar AST y AST optimizado para comparación
-    self.current_ast = None
+    self.original_ast = None
     self.optimized_ast = None
     
     self._create_widgets()
@@ -96,58 +95,34 @@ class App(tk.Tk):
               return
 
           # 2. Parsear el texto → AST
-          ast = parse_text(source_code)
-          self.current_ast = ast  # Guardar AST original
-          
-          # 3. Optimizar automáticamente el AST
-          optimizer = ASTOptimizer()
-          self.optimized_ast = optimizer.optimize(ast)
-          optimization_stats = optimizer.get_optimization_stats()
+          self.original_ast = parse_text(source_code)
 
-          # 4. Analizar semánticamente (AST original)
-          diags = analyze(ast)
-          
-          # Analizar AST optimizado también
-          optimized_diags = analyze(self.optimized_ast)
+          # 3. Analizar semánticamente (AST original)
+          diags = analyze(self.original_ast)
+          if diags.has_errors():
+              self._clear_output()
+              self._log_output("Errores semánticos encontrados en el AST original:")
+              self._log_output(diags.pretty())
+              return
+
+          # 4. Optimizar el AST
+          optimizer = ASTOptimizer()
+          self.optimized_ast = optimizer.optimize(self.original_ast)
+          optimization_stats = optimizer.get_optimization_stats()
 
           # 5. Guardar resultados en carpeta out/
           os.makedirs("out", exist_ok=True)
 
-          save_ast_json(ast, "out/ast.json")
+          save_ast_json(self.original_ast, "out/ast.json")
           save_ast_json(self.optimized_ast, "out/ast_optimized.json")
           save_diags_txt(diags, "out/diagnostics.txt")
-          save_diags_txt(optimized_diags, "out/diagnostics_optimized.txt")
 
           # 6. Mostrar feedback en consola GUI
           self._clear_output()
           self._log_output("=== Compilación completada ===")
-          self._log_output("\n-- Diagnósticos (AST Original) --")
+          self._log_output("\n-- Diagnósticos --")
           self._log_output(diags.pretty())
           
-          self._log_output("\n-- Optimización Automática --")
-          self._log_output(f"Optimizaciones aplicadas: {optimization_stats['optimizations_applied']}")
-          
-          if optimization_stats['optimizations_applied'] > 0:
-              self._log_output("✓ AST optimizado generado")
-              self._log_output("\n-- Diagnósticos (AST Optimizado) --")
-              if optimized_diags.items:  # Si hay diagnósticos
-                  self._log_output(optimized_diags.pretty())
-                  if optimized_diags.has_errors():
-                      self._log_output("⚠ AST optimizado contiene errores")
-                  else:
-                      self._log_output("✓ AST optimizado sin errores críticos")
-              else:
-                  self._log_output("✓ Sin diagnósticos en AST optimizado")
-          else:
-              self._log_output("ℹ No se aplicaron optimizaciones - el código ya está optimizado")
-          
-          self._log_output("\n-- Archivos generados --")
-          self._log_output("AST original: out/ast.json")
-          self._log_output("AST optimizado: out/ast_optimized.json")
-          self._log_output("Use 'Mostrar AST' para visualizar y comparar")
-
-
-
       except Exception as e:
           messagebox.showerror("Error de compilación", str(e))
           self._clear_output()
@@ -199,28 +174,15 @@ class App(tk.Tk):
                                  command=lambda: make_choice("optimized"), width=18)
         optimized_btn.pack(side=tk.LEFT, padx=15)
         
-        compare_btn = ttk.Button(button_frame, text="Comparar Ambos", 
-                               command=lambda: make_choice("both"), width=18)
-        compare_btn.pack(side=tk.LEFT, padx=15)
-        
         # Esperar a que se haga la elección
         selection_window.wait_window()
         
         # Procesar la elección
         if choice.get() == "original":
-            viewer = AstViewer(self, json_path="out/ast.json")
-            viewer.title("AST Original")
+            viewer = AstViewer(self, json_path="out/ast.json", title="AST Original")
         elif choice.get() == "optimized":
-            viewer = AstViewer(self, json_path="out/ast_optimized.json")
-            viewer.title("AST Optimizado")
-        elif choice.get() == "both":
-            # Mostrar ambos con un pequeño desplazamiento
-            viewer1 = AstViewer(self, json_path="out/ast.json")
-            viewer1.title("AST Original")
-            viewer1.geometry("+100+100")  # Posicionar primera ventana
-            viewer2 = AstViewer(self, json_path="out/ast_optimized.json")
-            viewer2.title("AST Optimizado")
-            viewer2.geometry("+500+100")  # Posicionar segunda ventana con offset
+            viewer = AstViewer(self, json_path="out/ast_optimized.json", title="AST Optimizado")
+
     else:
         # Solo hay AST original
         viewer = AstViewer(self, json_path="out/ast.json")

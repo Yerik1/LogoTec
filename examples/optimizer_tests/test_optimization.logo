@@ -1,0 +1,17 @@
+// CONSTANT FOLDING
+INIC xex = 2 + 3 * 4    
+INIC yey = (10 - 5) / 2
+
+// Algebraic Simplification
+INIC xex = xex + 0
+INIC xex = xex * 1
+INIC xex = xex * 0
+INIC xex = xex / 1
+INIC xex = xex - xex
+
+// Dead Code Elimination
+AV 0
+GD 0
+RE 0
+
+// Control Flow
