@@ -72,13 +72,6 @@ El optimizador genera los siguientes archivos en la carpeta `out/`:
 - `ast_optimized.json`: AST optimizado
 - `diagnostics_optimized.txt`: Diagnósticos del AST optimizado
 
-## Limitaciones
-
-- Solo optimiza expresiones y comandos seguros
-- No optimiza cuando hay posibles efectos secundarios
-- Preserva la semántica original del programa
-- Algunos patrones complejos pueden no ser detectados
-
 ## Testing
 
 Para probar el optimizador se pueden cargar los archivos de prueba que se encuentran en `examples/optimizer_test/`.
