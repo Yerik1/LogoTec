@@ -1,9 +1,0 @@
-// Ejemplo simple para demostrar optimización automática
-INIC x = 2 + 3
-INIC y = x * 1
-AV 10 + 5
-RE 0
-GD 90 + 0
-REPITE 1 [
-    AV 20
-]

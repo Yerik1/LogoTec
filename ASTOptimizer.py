@@ -1,5 +1,4 @@
 from frontend.ast import Node
-import math
 
 class ASTOptimizer:
     """
@@ -41,12 +40,23 @@ class ASTOptimizer:
     def generic_visit(self, node: Node) -> Node:
         """Visita por defecto: procesa hijos recursivamente"""
         optimized_children = []
+        changed = False
+        
         for child in node.children:
             optimized_child = self.visit(child)
             if optimized_child is not None:
                 optimized_children.append(optimized_child)
+                if optimized_child != child:
+                    changed = True
+            else:
+                # Child was eliminated (became None)
+                changed = True
         
-        return Node(node.kind, node.value, optimized_children, node.line)
+        # Solo crear un nuevo nodo si algo cambió
+        if changed:
+            return Node(node.kind, node.value, optimized_children, node.line)
+        else:
+            return node
 
     # =====================================================
     # OPTIMIZACIONES DE EXPRESIONES ARITMÉTICAS
@@ -319,7 +329,7 @@ class ASTOptimizer:
             else:
                 # Condición siempre falsa
                 self.optimizations_applied += 1
-                return else_branch if else_branch else Node("EMPTY", line=node.line)
+                return else_branch if else_branch else Node("EMPTY", None, [], node.line)
         
         # Construir nodo optimizado
         children = [condition, then_branch]
@@ -341,7 +351,7 @@ class ASTOptimizer:
             if not self._get_boolean_value(condition):
                 # Condición siempre falsa - bucle nunca se ejecuta
                 self.optimizations_applied += 1
-                return Node("EMPTY", line=node.line)
+                return None
             # Si es siempre verdadera, mantener el bucle (podría ser bucle infinito intencional)
         
         return Node(node.kind, node.value, [condition, body], node.line)
@@ -357,7 +367,7 @@ class ASTOptimizer:
         # Si el contador es 0, eliminar el bucle
         if count.kind == "NUM" and count.value <= 0:
             self.optimizations_applied += 1
-            return Node("EMPTY", line=node.line)
+            return None
         
         # Si el contador es 1, ejecutar el cuerpo una vez
         if count.kind == "NUM" and count.value == 1:
@@ -380,7 +390,7 @@ class ASTOptimizer:
         # Si la distancia es 0, eliminar el comando
         if distance.kind == "NUM" and distance.value == 0:
             self.optimizations_applied += 1
-            return Node("EMPTY", line=node.line)
+            return None
             
         return Node(node.kind, node.value, [distance], node.line)
 
@@ -394,12 +404,12 @@ class ASTOptimizer:
         # Si la distancia es 0, eliminar el comando
         if distance.kind == "NUM" and distance.value == 0:
             self.optimizations_applied += 1
-            return Node("EMPTY", line=node.line)
+            return None
             
         # RE x = AV -x
         if distance.kind == "NUM":
             self.optimizations_applied += 1
-            return Node("AV", line=node.line).add(Node("NUM", -distance.value, [], distance.line))
+            return Node("AV", None, [Node("NUM", -distance.value, [], distance.line)], node.line)
             
         return Node(node.kind, node.value, [distance], node.line)
 
@@ -413,7 +423,7 @@ class ASTOptimizer:
         # Si el ángulo es 0, eliminar el comando
         if angle.kind == "NUM" and angle.value == 0:
             self.optimizations_applied += 1
-            return Node("EMPTY", line=node.line)
+            return None
         
         # Normalizar ángulos (opcional)
         if angle.kind == "NUM":
@@ -434,12 +444,12 @@ class ASTOptimizer:
         # Si el ángulo es 0, eliminar el comando
         if angle.kind == "NUM" and angle.value == 0:
             self.optimizations_applied += 1
-            return Node("EMPTY", line=node.line)
+            return None
         
         # GI x = GD -x
         if angle.kind == "NUM":
             self.optimizations_applied += 1
-            return Node("GD", line=node.line).add(Node("NUM", -angle.value, [], angle.line))
+            return Node("GD", None, [Node("NUM", -angle.value, [], angle.line)], node.line)
             
         return Node(node.kind, node.value, [angle], node.line)
 
@@ -453,18 +463,17 @@ class ASTOptimizer:
         
         for child in node.children:
             optimized_child = self.visit(child)
-            # No agregar comandos vacíos
+            # Solo agregar hijos que no sean vacíos o None
             if optimized_child and optimized_child.kind != "EMPTY":
                 optimized_children.append(optimized_child)
         
-        # Si no hay hijos después de optimización, retornar comando vacío
+        # Si no hay hijos después de optimización, retornar None
+        # Esto será manejado por el visitante padre
         if not optimized_children:
-            self.optimizations_applied += 1
-            return Node("EMPTY", line=node.line)
+            return None
             
-        # Si solo hay un hijo, retornarlo directamente
+        # Si solo hay un hijo, retornarlo directamente (sin STMTS wrapper)
         if len(optimized_children) == 1:
-            self.optimizations_applied += 1
             return optimized_children[0]
             
         return Node(node.kind, node.value, optimized_children, node.line)
