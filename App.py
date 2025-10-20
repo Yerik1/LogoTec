@@ -7,6 +7,7 @@ from frontend.semantics import analyze
 from frontend.exporter import save_ast_json, save_diags_txt
 from frontend.ast_viewer_tk import AstViewer
 from optimizer.ASTOptimizer import ASTOptimizer
+from IR.IntermediateCodeGen import LLVMCodeGenerator
 
 class App(tk.Tk):
   def __init__(self: "App") -> None:
@@ -45,6 +46,7 @@ class App(tk.Tk):
         ("Mostrar AST", self._show_ast),
         ("Ejecutar", self._run_code),
         ("Cargar Archivo", self._load_file),
+        ("Mostrar IR", self._run_code),
     ]:
       button = ttk.Button(self.button_bar, text=text, command=cmd)
       button.pack(side=tk.LEFT, padx=5)
@@ -110,14 +112,18 @@ class App(tk.Tk):
           self.optimized_ast = optimizer.optimize(self.original_ast)
           optimization_stats = optimizer.get_optimization_stats()
 
-          # 5. Guardar resultados en carpeta out/
+          # 5. Generar IR
+          ir_generator = LLVMCodeGenerator()
+          llvm_ir = ir_generator.generate(self.optimized_ast)
+
+          # 6. Guardar resultados en carpeta out/
           os.makedirs("out", exist_ok=True)
 
           save_ast_json(self.original_ast, "out/ast.json")
           save_ast_json(self.optimized_ast, "out/ast_optimized.json")
           save_diags_txt(diags, "out/diagnostics.txt")
 
-          # 6. Mostrar feedback en consola GUI
+          # 7. Mostrar feedback en consola GUI
           self._clear_output()
           self._log_output("=== Compilación completada ===")
           self._log_output("\n-- Diagnósticos --")
