@@ -130,10 +130,14 @@ class App(tk.Tk):
           if optimization_stats['optimizations_applied'] > 0:
               self._log_output("✓ AST optimizado generado")
               self._log_output("\n-- Diagnósticos (AST Optimizado) --")
-              if optimized_diags.errors or optimized_diags.warnings:
+              if optimized_diags.items:  # Si hay diagnósticos
                   self._log_output(optimized_diags.pretty())
+                  if optimized_diags.has_errors():
+                      self._log_output("⚠ AST optimizado contiene errores")
+                  else:
+                      self._log_output("✓ AST optimizado sin errores críticos")
               else:
-                  self._log_output("✓ Sin errores en AST optimizado")
+                  self._log_output("✓ Sin diagnósticos en AST optimizado")
           else:
               self._log_output("ℹ No se aplicaron optimizaciones - el código ya está optimizado")
           
