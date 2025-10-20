@@ -167,7 +167,7 @@ class App(tk.Tk):
         # Crear ventana de selección personalizada
         selection_window = tk.Toplevel(self)
         selection_window.title("Seleccionar AST")
-        selection_window.geometry("400x200")
+        selection_window.geometry("600x250")
         selection_window.resizable(False, False)
         selection_window.transient(self)
         selection_window.grab_set()
@@ -192,23 +192,24 @@ class App(tk.Tk):
         
         # Botones de selección
         original_btn = ttk.Button(button_frame, text="AST Original", 
-                                command=lambda: make_choice("original"), width=15)
-        original_btn.pack(side=tk.LEFT, padx=10)
+                                command=lambda: make_choice("original"), width=18)
+        original_btn.pack(side=tk.LEFT, padx=15)
         
         optimized_btn = ttk.Button(button_frame, text="AST Optimizado", 
-                                 command=lambda: make_choice("optimized"), width=15)
-        optimized_btn.pack(side=tk.LEFT, padx=10)
+                                 command=lambda: make_choice("optimized"), width=18)
+        optimized_btn.pack(side=tk.LEFT, padx=15)
         
         compare_btn = ttk.Button(button_frame, text="Comparar Ambos", 
-                               command=lambda: make_choice("both"), width=15)
-        compare_btn.pack(side=tk.LEFT, padx=10)
+                               command=lambda: make_choice("both"), width=18)
+        compare_btn.pack(side=tk.LEFT, padx=15)
         
         # Info adicional
-        info_text = ("AST Original: Estructura tal como fue parseada\n"
-                    "AST Optimizado: Estructura después de aplicar optimizaciones\n"
-                    "Comparar: Muestra ambos ASTs en ventanas separadas")
-        info_label = ttk.Label(selection_window, text=info_text, justify=tk.CENTER, foreground="gray")
-        info_label.pack(pady=10)
+        info_text = ("• AST Original: Estructura tal como fue parseada desde el código fuente\n"
+                    "• AST Optimizado: Estructura después de aplicar optimizaciones automáticas\n"
+                    "• Comparar: Muestra ambos ASTs en ventanas separadas para comparación")
+        info_label = ttk.Label(selection_window, text=info_text, justify=tk.LEFT, 
+                              foreground="gray", wraplength=580)
+        info_label.pack(pady=(10, 20), padx=20)
         
         # Esperar a que se haga la elección
         selection_window.wait_window()
