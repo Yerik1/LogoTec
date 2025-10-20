@@ -81,4 +81,4 @@ El optimizador genera los siguientes archivos en la carpeta `out/`:
 
 ## Testing
 
-Para probar el optimizador se pueden cargar los archivos de prueba que se encuentran en examples/optimizer_test/.
+Para probar el optimizador se pueden cargar los archivos de prueba que se encuentran en `examples/optimizer_test/`.

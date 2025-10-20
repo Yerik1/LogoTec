@@ -6,7 +6,7 @@ from frontend.parser import parse_text
 from frontend.semantics import analyze
 from frontend.exporter import save_ast_json, save_diags_txt
 from frontend.ast_viewer_tk import AstViewer
-from ASTOptimizer import ASTOptimizer
+from optimizer.ASTOptimizer import ASTOptimizer
 
 class App(tk.Tk):
   def __init__(self: "App") -> None:
