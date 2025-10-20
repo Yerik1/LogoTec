@@ -167,7 +167,7 @@ class App(tk.Tk):
         # Crear ventana de selección personalizada
         selection_window = tk.Toplevel(self)
         selection_window.title("Seleccionar AST")
-        selection_window.geometry("600x250")
+        selection_window.geometry("600x200")
         selection_window.resizable(False, False)
         selection_window.transient(self)
         selection_window.grab_set()
@@ -203,31 +203,28 @@ class App(tk.Tk):
                                command=lambda: make_choice("both"), width=18)
         compare_btn.pack(side=tk.LEFT, padx=15)
         
-        # Info adicional
-        info_text = ("• AST Original: Estructura tal como fue parseada desde el código fuente\n"
-                    "• AST Optimizado: Estructura después de aplicar optimizaciones automáticas\n"
-                    "• Comparar: Muestra ambos ASTs en ventanas separadas para comparación")
-        info_label = ttk.Label(selection_window, text=info_text, justify=tk.LEFT, 
-                              foreground="gray", wraplength=580)
-        info_label.pack(pady=(10, 20), padx=20)
-        
         # Esperar a que se haga la elección
         selection_window.wait_window()
         
         # Procesar la elección
         if choice.get() == "original":
-            AstViewer(self, json_path="out/ast.json", title="AST Original")
+            viewer = AstViewer(self, json_path="out/ast.json")
+            viewer.title("AST Original")
         elif choice.get() == "optimized":
-            AstViewer(self, json_path="out/ast_optimized.json", title="AST Optimizado")
+            viewer = AstViewer(self, json_path="out/ast_optimized.json")
+            viewer.title("AST Optimizado")
         elif choice.get() == "both":
             # Mostrar ambos con un pequeño desplazamiento
-            viewer1 = AstViewer(self, json_path="out/ast.json", title="AST Original")
+            viewer1 = AstViewer(self, json_path="out/ast.json")
+            viewer1.title("AST Original")
             viewer1.geometry("+100+100")  # Posicionar primera ventana
-            viewer2 = AstViewer(self, json_path="out/ast_optimized.json", title="AST Optimizado")
+            viewer2 = AstViewer(self, json_path="out/ast_optimized.json")
+            viewer2.title("AST Optimizado")
             viewer2.geometry("+500+100")  # Posicionar segunda ventana con offset
     else:
         # Solo hay AST original
-        AstViewer(self, json_path="out/ast.json", title="AST Original")
+        viewer = AstViewer(self, json_path="out/ast.json")
+        viewer.title("AST Original")
 
   def _run_code(self):
     self._clear_output()
