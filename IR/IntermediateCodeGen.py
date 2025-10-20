@@ -1,6 +1,7 @@
 from llvmlite import ir
+import os
 
-class LLVMCodeGenerator:
+class IntermediateCodeGen:
     def __init__(self):
         self.module = ir.Module(name="logotec_module")
         self.builder = None
@@ -48,3 +49,9 @@ class LLVMCodeGenerator:
 
         else:
             raise NotImplementedError(f"Unknown node kind: {kind}")
+
+    def save_ir_to_file(self, ir_text, output_path="out/output.ll"):
+        """Writes IR code to file (creates directory if missing)."""
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(ir_text)
