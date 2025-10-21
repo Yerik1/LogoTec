@@ -7,6 +7,7 @@ from frontend.semantics import analyze
 from frontend.exporter import save_ast_json, save_diags_txt
 from frontend.ast_viewer_tk import AstViewer
 from optimizer.ASTOptimizer import ASTOptimizer
+from IR.IntermediateCodeGen import IntermediateCodeGen
 
 class App(tk.Tk):
   def __init__(self: "App") -> None:
@@ -110,14 +111,32 @@ class App(tk.Tk):
           self.optimized_ast = optimizer.optimize(self.original_ast)
           optimization_stats = optimizer.get_optimization_stats()
 
-          # 5. Guardar resultados en carpeta out/
+          # 5. Generar IR
+          try:
+
+              ir_generator = IntermediateCodeGen()
+              llvm_ir = ir_generator.generate(self.optimized_ast)
+
+              # Guardar IR en carpeta out/
+              os.makedirs("out", exist_ok=True)
+              ir_output_path = os.path.join("out", "output.ll")
+              ir_generator.save_ir_to_file(llvm_ir, ir_output_path)
+
+              self._log_output(f"IR generado correctamente: {ir_output_path}")
+
+          except Exception as ir_error:
+              self._log_output("Error al generar IR intermedio:")
+              self._log_output(str(ir_error))
+              raise
+
+          # 6. Guardar resultados en carpeta out/
           os.makedirs("out", exist_ok=True)
 
           save_ast_json(self.original_ast, "out/ast.json")
           save_ast_json(self.optimized_ast, "out/ast_optimized.json")
           save_diags_txt(diags, "out/diagnostics.txt")
 
-          # 6. Mostrar feedback en consola GUI
+          # 7. Mostrar feedback en consola GUI
           self._clear_output()
           self._log_output("=== Compilación completada ===")
           self._log_output("\n-- Diagnósticos --")
