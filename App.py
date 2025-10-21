@@ -8,6 +8,7 @@ from frontend.exporter import save_ast_json, save_diags_txt
 from frontend.ast_viewer_tk import AstViewer
 from optimizer.ASTOptimizer import ASTOptimizer
 from IR.IntermediateCodeGen import IntermediateCodeGen
+from IR_to_ASM.AssemblyGen import AssemblyGen
 
 class App(tk.Tk):
   def __init__(self: "App") -> None:
@@ -46,7 +47,6 @@ class App(tk.Tk):
         ("Mostrar AST", self._show_ast),
         ("Ejecutar", self._run_code),
         ("Cargar Archivo", self._load_file),
-        ("Mostrar IR", None),
     ]:
       button = ttk.Button(self.button_bar, text=text, command=cmd)
       button.pack(side=tk.LEFT, padx=5)
@@ -130,14 +130,22 @@ class App(tk.Tk):
               self._log_output(str(ir_error))
               raise
 
-          # 6. Guardar resultados en carpeta out/
+          # 6. Generar ASM
+          ir_generator = IntermediateCodeGen()
+          llvm_ir = ir_generator.generate(self.optimized_ast)
+          ir_generator.save_ir_to_file(llvm_ir, "out/output.ll")
+
+          asm_generator = AssemblyGen("out/output.ll", "out/output.s")
+          asm_path = asm_generator.generate()
+
+          # 7. Guardar resultados en carpeta out/
           os.makedirs("out", exist_ok=True)
 
           save_ast_json(self.original_ast, "out/ast.json")
           save_ast_json(self.optimized_ast, "out/ast_optimized.json")
           save_diags_txt(diags, "out/diagnostics.txt")
 
-          # 7. Mostrar feedback en consola GUI
+          # 8. Mostrar feedback en consola GUI
           self._clear_output()
           self._log_output("=== Compilación completada ===")
           self._log_output("\n-- Diagnósticos --")
