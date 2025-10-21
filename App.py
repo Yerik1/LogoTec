@@ -113,9 +113,22 @@ class App(tk.Tk):
           optimization_stats = optimizer.get_optimization_stats()
 
           # 5. Generar IR
-          ir_generator = IntermediateCodeGen()
-          llvm_ir = ir_generator.generate(self.optimized_ast)
-          ir_generator.save_ir_to_file(llvm_ir, "out/output.ll")
+          try:
+
+              ir_generator = IntermediateCodeGen()
+              llvm_ir = ir_generator.generate(self.optimized_ast)
+
+              # Guardar IR en carpeta out/
+              os.makedirs("out", exist_ok=True)
+              ir_output_path = os.path.join("out", "output.ll")
+              ir_generator.save_ir_to_file(llvm_ir, ir_output_path)
+
+              self._log_output(f"IR generado correctamente: {ir_output_path}")
+
+          except Exception as ir_error:
+              self._log_output("Error al generar IR intermedio:")
+              self._log_output(str(ir_error))
+              raise
 
           # 6. Guardar resultados en carpeta out/
           os.makedirs("out", exist_ok=True)
