@@ -46,7 +46,6 @@ class App(tk.Tk):
         ("Mostrar AST", self._show_ast),
         ("Ejecutar", self._run_code),
         ("Cargar Archivo", self._load_file),
-        ("Mostrar IR", None),
     ]:
       button = ttk.Button(self.button_bar, text=text, command=cmd)
       button.pack(side=tk.LEFT, padx=5)
