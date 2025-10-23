@@ -1,0 +1,33 @@
+// ===========================================
+// TEST: ALGEBRAIC SIMPLIFICATION (Simplificación Algebraica)
+// ===========================================
+// Este test verifica que el optimizador simplifique operaciones
+// algebraicas que siguen patrones matemáticos conocidos
+
+// Inicialización de variable base para las pruebas
+INIC xex = 2  
+
+// Identidad aditiva: x + 0 = x
+// Original: xex + 0
+// Optimizado: xex
+INIC xex = xex + 0
+
+// Identidad multiplicativa: x * 1 = x  
+// Original: xex * 1
+// Optimizado: xex
+INIC xex = xex * 1
+
+// Elemento absorbente: x * 0 = 0
+// Original: xex * 0  
+// Optimizado: 0
+INIC xex = xex * 0
+
+// División por uno: x / 1 = x
+// Original: xex / 1
+// Optimizado: xex
+INIC xex = xex / 1
+
+// Auto-sustracción: x - x = 0
+// Original: xex - xex
+// Optimizado: 0
+INIC xex = xex - xex

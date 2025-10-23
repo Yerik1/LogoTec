@@ -1,1 +1,2 @@
-# Colocar las dependencias necesarias aquí
+# Dependencias del proyecto LogoTec
+ply>=3.11
