@@ -94,21 +94,21 @@ class IntermediateCodeGen:
                 return st[name]
         return None
 
-    def _create_var_alloca(self, name, llvm_type=INT):
-        # create alloca in function entry block (standard practice)
-        func = self.current_function
-        entry_block = func.entry_basic_block
-        builder_save = self.builder
+    def _create_var_alloca(self, name, llvm_type=None):
+        if llvm_type is None:
+            llvm_type = self.INT
 
-        # place temporary IRBuilder at entry to emit alloca there
-        tmpb = ir.IRBuilder(entry_block)
-        # If existing first non-alloca instr exists, alloca inserted at top anyway
-        alloca = tmpb.alloca(llvm_type, name=name)
-        self._current_symtab()[name] = alloca
+        # 1) No dupliques: si ya existe en el scope actual, reúsalo
+        symtab = self._current_symtab()
+        if name in symtab:
+            return symtab[name]
 
-        # restore builder
-        self.builder = builder_save
-        return alloca
+        # 2) Siempre usa un builder NUEVO y posiciónalo al INICIO del entry
+        entry = self.current_function.entry_basic_block
+
+        slot = self.builder.alloca(llvm_type, name=name)
+        symtab[name] = slot
+        return slot
 
     def _ensure_var(self, name):
         a = self._get_var_alloca(name)
@@ -162,6 +162,16 @@ class IntermediateCodeGen:
 
         raise NotImplementedError(f"Unhandled boolean node kind: {kind}")
 
+    def _dump_ast(self, node, indent=0, label=""):
+        pad = "  " * indent
+        kind = getattr(node, "kind", type(node).__name__)
+        val = getattr(node, "value", None)
+        if label:
+            print(f"{pad}{label}: {kind}  value={val!r}")
+        else:
+            print(f"{pad}{kind}  value={val!r}")
+        for i, ch in enumerate(getattr(node, "children", []) or []):
+            self._dump_ast(ch, indent + 1, label=f"child[{i}]")
     # ----------------------
     # Main generator: parses the AST and return an IR
     # ----------------------
@@ -263,14 +273,53 @@ class IntermediateCodeGen:
 
         # ----- Calls (user procedures or builtins) -----
         if kind == "CALL":
-            fn_name = node.value
-            args = [self._gen_node(c) for c in node.children]
-            if isinstance(fn_name, int):
-                fn_name = str(fn_name)
-            fn = self.func_table.get(fn_name.upper() if fn_name else None)
-            if fn is None:
-                raise NameError(f"Runtime function {fn_name} not declared")
-            return self.builder.call(fn, args)
+            fn_name = None
+            args_nodes = []
+
+            # Formato A: CALL node.value = nombre (ej: AZAR)
+            if node.value is not None:
+                fn_name = node.value
+                args_nodes = node.children or []
+
+            # Formato B: CALL -> [ ID(nombre), ARGS(...) ]
+            else:
+                fn_name = node.children[0].value
+
+                if len(node.children) > 1 and node.children[1] is not None:
+                    args_node = node.children[1]
+                    args_nodes = args_node.children or []
+                else:
+                    args_nodes = []
+
+            # Normaliza nombre según cómo guardas en func_table
+            fn_key = fn_name
+
+            # Genera valores LLVM de los args
+            args = []
+            for i, n in enumerate(args_nodes):
+                v = self._gen_node(n)
+                args.append(v)
+
+            # Primero busca funciones de usuario
+            fn = self.func_table.get(fn_key)
+
+            if fn is not None:
+                call_val = self.builder.call(fn, args)
+                return call_val
+
+            # Si no está, intenta builtins (ej. AZAR)
+            if hasattr(self, "_gen_builtin"):
+                bv = self._gen_builtin(fn_key, args)
+                if bv is not None:
+                    return bv
+
+            # Fallback: función declarada directamente en el módulo (por nombre exacto)
+            mod_fn = self.module.globals.get(fn_name)
+            if isinstance(mod_fn, ir.Function):
+                call_val = self.builder.call(mod_fn, args)
+                return call_val
+
+            raise NameError(f"Function '{fn_name}' not declared (args leídos: {len(args_nodes)})")
 
         # ----- Turtle / primitives -----
         if kind in ("AV", "RE", "GD", "GI"):
@@ -348,14 +397,31 @@ class IntermediateCodeGen:
             self.func_table[fname] = fn
 
             entry = fn.append_basic_block(name="entry")
+            body_bb = fn.append_basic_block(name="body.entry")
+
             save_builder, save_current = self.builder, self.current_function
-            self.builder = ir.IRBuilder(entry)
             self.current_function = fn
+            self.builder = ir.IRBuilder(entry)
+
+
 
             self._push_scope()
+            # --- Allocations de parámetros (usando un builder separado y fijo) ---
+            self.builder.position_at_start(entry)
+            for p in params_node.children:
+                self._create_var_alloca(p.value, self.INT)
+
+            self.builder.position_at_end(entry)
+            # --- Ahora sí, usa self.builder (en una posición independiente) para los stores ---
             for i, pname_node in enumerate(params_node.children):
-                alloca = self._create_var_alloca(pname_node.value, self.INT)
-                self.builder.store(fn.args[i], alloca)
+                slot = self._current_symtab()[pname_node.value]
+                self.builder.store(fn.args[i], slot)
+
+
+            self.builder.position_at_end(entry)
+
+            self.builder.branch(body_bb)
+            self.builder.position_at_end(body_bb)
             self._gen_node(body_node)
             if not self.builder.block.is_terminated:
                 self.builder.ret_void()
@@ -373,26 +439,46 @@ class IntermediateCodeGen:
             count_val = self._gen_node(node.children[0])
             body = node.children[1]
 
-            fn = self.current_function
-            start_bb = fn.append_basic_block(name="rep_start")
-            loop_bb = fn.append_basic_block(name="rep_loop")
-            end_bb = fn.append_basic_block(name="rep_end")
+            if isinstance(count_val, int):
+                count_val = ir.Constant(self.INT, count_val)
 
-            counter_alloca = self._create_var_alloca("__rep_counter", self.INT)
+            fn = self.current_function
+
+            # === Crear un contador local con nombre único ===
+            suffix = self._unique("rep") if hasattr(self, "_unique") else str(id(node))
+            counter_name = f"__rep_counter_{suffix}"
+
+            try:
+                # Intentar buscar el contador en el símbolo actual (por seguridad)
+                counter_alloca = self._current_symtab()[counter_name]
+            except KeyError:
+                # Si no existe, créalo (el helper lo pondrá al inicio del entry)
+                counter_alloca = self._create_var_alloca(counter_name, self.INT)
+
+            # === Crear bloques únicos ===
+            start_bb = fn.append_basic_block(name=f"rep_start.{suffix}")
+            loop_bb = fn.append_basic_block(name=f"rep_loop.{suffix}")
+            end_bb = fn.append_basic_block(name=f"rep_end.{suffix}")
+
+            # === Inicializar el contador y saltar al inicio del loop ===
             self.builder.store(ir.Constant(self.INT, 0), counter_alloca)
             self.builder.branch(start_bb)
 
+            # === Condición ===
             self.builder.position_at_end(start_bb)
             counter = self.builder.load(counter_alloca)
             cond = self.builder.icmp_signed("<", counter, count_val)
             self.builder.cbranch(cond, loop_bb, end_bb)
 
+            # === Cuerpo del bucle ===
             self.builder.position_at_end(loop_bb)
             self._gen_node(body)
             counter = self.builder.load(counter_alloca)
-            self.builder.store(self.builder.add(counter, ir.Constant(self.INT, 1)), counter_alloca)
+            next_counter = self.builder.add(counter, ir.Constant(self.INT, 1))
+            self.builder.store(next_counter, counter_alloca)
             self.builder.branch(start_bb)
 
+            # === Fin del bucle ===
             self.builder.position_at_end(end_bb)
             return None
 
