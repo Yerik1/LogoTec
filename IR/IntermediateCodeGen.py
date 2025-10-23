@@ -8,6 +8,9 @@ FLOAT = ir.FloatType()
 class IntermediateCodeGen:
     def __init__(self):
         self.module = ir.Module(name="logotec_module")
+        self.module.triple = "x86_64-pc-windows-msvc"
+        self.module.data_layout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+
         self.builder = None
 
         # define int types
