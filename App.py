@@ -114,7 +114,6 @@ class App(tk.Tk):
 
           # 5. Generar IR
           try:
-
               ir_generator = IntermediateCodeGen()
               llvm_ir = ir_generator.generate(self.optimized_ast)
 
@@ -122,6 +121,13 @@ class App(tk.Tk):
               os.makedirs("out", exist_ok=True)
               ir_output_path = os.path.join("out", "output.ll")
               ir_generator.save_ir_to_file(llvm_ir, ir_output_path)
+
+              # Insertar encabezado target triple si no existe
+              with open(ir_output_path, "r+", encoding="utf-8") as f:
+                  content = f.read()
+                  if "target triple" not in content:
+                      f.seek(0, 0)
+                      f.write('target triple = "x86_64-pc-windows-msvc"\n' + content)
 
               self._log_output(f"IR generado correctamente: {ir_output_path}")
 
@@ -131,10 +137,6 @@ class App(tk.Tk):
               raise
 
           # 6. Generar ASM
-          ir_generator = IntermediateCodeGen()
-          llvm_ir = ir_generator.generate(self.optimized_ast)
-          ir_generator.save_ir_to_file(llvm_ir, "out/output.ll")
-
           asm_generator = AssemblyGen("out/output.ll", "out/output.s")
           asm_path = asm_generator.generate()
 
