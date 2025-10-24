@@ -1,7 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import os
+import os, sys, subprocess
+from pathlib import Path
 
+from Executable.drawing import start_embed_server
 from frontend.parser import parse_text
 from frontend.semantics import analyze
 from frontend.exporter import save_ast_json, save_diags_txt
@@ -9,6 +11,7 @@ from frontend.ast_viewer_tk import AstViewer
 from optimizer.ASTOptimizer import ASTOptimizer
 from IR.IntermediateCodeGen import IntermediateCodeGen
 from IR_to_ASM.AssemblyGen import AssemblyGen
+from Executable.build_native import build_and_link
 
 class App(tk.Tk):
   def __init__(self: "App") -> None:
@@ -140,6 +143,9 @@ class App(tk.Tk):
           asm_generator = AssemblyGen("out/output.ll", "out/output.s")
           asm_path = asm_generator.generate()
 
+          exe_path = build_and_link(asm_path, out_dir="out", exe_name="turtle")
+          exe_path = Path(exe_path).resolve()
+
           # 7. Guardar resultados en carpeta out/
           os.makedirs("out", exist_ok=True)
 
@@ -219,8 +225,52 @@ class App(tk.Tk):
         viewer.title("AST Original")
 
   def _run_code(self):
-    self._clear_output()
-    self._log_output("Ejecutando...\n(Sin lógica conectada aún)")
+      import os, sys, subprocess, shutil, threading, traceback
+      self._clear_output()
+      self._log_output("Ejecutando...\n")
+
+      def worker():
+          try:
+              out_dir = Path("out");
+              out_dir.mkdir(exist_ok=True)
+              exe_path = (out_dir / ("turtle.exe" if os.name == "nt" else "turtle")).resolve()
+              if not exe_path.exists():
+                  self._log_output(f"❌ No existe el ejecutable: {exe_path}\n")
+                  return
+
+              # copiar drawing.py a out si hace falta
+              server_src = Path(__file__).parent / "drawing.py"
+              server_dst = out_dir / "drawing.py"
+              if server_src.exists():
+                  if not server_dst.exists() or server_src.read_bytes() != server_dst.read_bytes():
+                      shutil.copy2(server_src, server_dst)
+
+              from Executable.drawing import start_embed_server
+
+              # 1) inicia el bridge sobre tu Canvas existente (ej. self.canvas)
+              addr, port = start_embed_server(self.canvas)
+
+              env = os.environ.copy()
+              env["TURTLE_TCP_ADDR"] = f"{addr}:{port}"
+
+              proc = subprocess.Popen(
+                  [str(exe_path)],
+                  cwd=str(exe_path.parent),
+                  env=env,
+                  stdout=subprocess.PIPE,
+                  stderr=subprocess.PIPE,
+                  text=True,
+                  bufsize=1
+              )
+              for line in proc.stderr:
+                  self._log_output(line)
+              rc = proc.wait()
+              self._log_output(f"\n[proceso terminado] código de salida: {rc}\n")
+          except Exception as e:
+              import traceback
+              self._log_output("❌ Error al ejecutar:\n" + traceback.format_exc())
+
+      threading.Thread(target=worker, daemon=True).start()
 
   def _load_file(self):
     """

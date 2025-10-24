@@ -32,6 +32,10 @@ class IntermediateCodeGen:
     def _declare_runtime_functions(self):
         # Turtle/hardware and helpers. All take/return ints where sensible.
         funcs = {
+
+            "RT_INIT": ("rt_init", ir.FunctionType(ir.VoidType(), [])),
+            "RT_STOP": ("rt_shutdown", ir.FunctionType(ir.VoidType(), [])),
+
             "AV": ("move_forward", ir.FunctionType(ir.VoidType(), [INT])),
             "RE": ("move_backward", ir.FunctionType(ir.VoidType(), [INT])),
             "GD": ("turn_right", ir.FunctionType(ir.VoidType(), [INT])),
@@ -46,12 +50,15 @@ class IntermediateCodeGen:
             "SB": ("pen_down", ir.FunctionType(ir.VoidType(), [])),
             "OT": ("hide_turtle", ir.FunctionType(ir.VoidType(), [])),
             "PONCL": ("set_color", ir.FunctionType(ir.VoidType(), [INT])),  # or string handling
-            "ESPERA": ("sleep_ms", ir.FunctionType(ir.VoidType(), [INT])),
+            "ESPERA": ("delay_ms", ir.FunctionType(ir.VoidType(), [INT])),
             "AZAR": ("rand_int", ir.FunctionType(INT, [INT])),
             "CENTRO": ("center_turtle", ir.FunctionType(ir.VoidType(), [])),
             # helpers:
             "POW": ("pow_int", ir.FunctionType(INT, [INT, INT])),  # integer pow
         }
+
+
+
         for key, (name, ftype) in funcs.items():
             fn = ir.Function(self.module, ftype, name=name)
             self.func_table[key] = fn
@@ -60,7 +67,7 @@ class IntermediateCodeGen:
 
     def _create_main_function(self):
         # main returns void; entry block set as current builder context
-        fnty = ir.FunctionType(ir.VoidType(), [])
+        fnty = ir.FunctionType(self.INT, [])
         f = ir.Function(self.module, fnty, name="main")
         block = f.append_basic_block(name="entry")
         self.builder = ir.IRBuilder(block)
@@ -69,10 +76,12 @@ class IntermediateCodeGen:
         self.func_table["main_func"] = f
 
     def generate(self, ast_root):
+        self.builder.call(self.func_table["rt_init"], [])
         self._gen_node(ast_root)
         # ensure main returns
         if not self.builder.block.is_terminated:
-            self.builder.ret_void()
+            self.builder.call(self.func_table["rt_shutdown"], [])
+            self.builder.ret(ir.Constant(self.INT, 0))
         return str(self.module)
 
     # ----------------------
@@ -179,6 +188,13 @@ class IntermediateCodeGen:
         # If it's not an AST Node, assume it's a literal/LLVM value and return as-is
         if not isinstance(node, Node):
             return node
+
+        color_map = {
+            "negro": 0,
+            "rojo": 1,
+            "azul": 2,
+            "verde": 3
+        }
 
         kind = node.kind.upper()
 
@@ -374,11 +390,11 @@ class IntermediateCodeGen:
         if kind == "PONCL":
             arg = node.children[0]
             if isinstance(arg, Node) and arg.kind.upper() == "STR":
-                color_val = ir.Constant(self.INT, 0)
+                color_val = color_map.get(arg.value, 0)
             else:
                 color_val = self._gen_node(arg)
             fn = self.func_table.get("PONCL") or self.func_table.get("set_color")
-            self.builder.call(fn, [color_val])
+            self.builder.call(fn, [ir.Constant(INT, color_val)])
             return None
 
         if kind == "ESPERA":
