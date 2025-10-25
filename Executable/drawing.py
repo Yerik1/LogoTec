@@ -60,6 +60,7 @@ class Turtle:
 
         self.x, self.y, self.h = self.W / 2, self.H / 2, 0.0
         self.pen = True
+        self.visible = True
         self.color = "black"
 
         self._sprite_visible = True
@@ -151,13 +152,14 @@ class Turtle:
         self.pen = False
         self.color = "black"
         self._sprite_visible = True
+        self.visible = True                  # <-- asegurar visible al reset
 
         # 4) overlays
         self.heading_text = self.c.create_text(
             70, 20, text="", fill="gray15", font=("Consolas", 10, "bold"), state="hidden"
         )
 
-        # 5) recrear sprite (imagen si hay base, si no triángulo)
+        # 5) reconstruir sprite (imagen si hay base, si no triángulo)
         try:
             from PIL import ImageTk, Image  # por si el archivo también corre sin PIL
             if getattr(self, "base_img", None) is not None:
@@ -185,8 +187,19 @@ class Turtle:
     def set_y(self, y):         self.y = float(y); self._ensure_sprite()
     def penup(self):            self.pen = True
     def pendown(self):          self.pen = False
-    def hide(self):             self._sprite_visible = False; self._ensure_sprite()
-    def show(self):             self._sprite_visible = True;  self._ensure_sprite()
+    def hide(self):
+        # invertir el estado visible
+        self._sprite_visible = not self._sprite_visible
+        self.visible = self._sprite_visible
+        # aplicar el cambio al sprite en pantalla
+        self.c.itemconfigure(self._sprite_id, state="normal" if self._sprite_visible else "hidden")
+
+
+    def show(self):
+        self.visible = True
+        self._sprite_visible = True
+        self._ensure_sprite()
+
     def set_color(self, c):
         palette = {0:"black",1:"red",2:"blue",3:"green",4:"orange",5:"purple"}
         self.color = palette.get(int(c), "black")
