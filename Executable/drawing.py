@@ -59,7 +59,7 @@ class Turtle:
             self.W, self.H = W, H
 
         self.x, self.y, self.h = self.W / 2, self.H / 2, 0.0
-        self.pen = True
+        self.pen = False
         self.visible = True
         self.color = "black"
 

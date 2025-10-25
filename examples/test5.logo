@@ -1,0 +1,17 @@
+BL
+PONCL "rojo"
+INIC i = 1
+INIC x = 1
+INIC a = 6
+EJECUTA[
+  REPITE 100 [
+    AV x
+    GD 86
+    AV i
+    GD 86
+    INIC x = x + a
+    INIC i = i - a
+  ]
+]
+ESPERA 5000
+
