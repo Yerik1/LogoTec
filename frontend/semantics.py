@@ -214,6 +214,8 @@ def check_stmt(n, st, di):
             di.error(n.line, "La condición de MIENTRAS debe ser booleana")
         check_stmt(n.children[1], st, di)
 
+    elif k == "HAZ":
+        check_stmt(n.children[0], st, di)
 
     elif k == "HAZ_HASTA":
         check_stmt(n.children[0], st, di)  # bloque

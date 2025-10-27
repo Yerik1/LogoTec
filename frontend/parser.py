@@ -173,6 +173,11 @@ def p_stmt_si_block(p):
     "stmt : SI bexpr block"
     p[0] = Node("SI", line=p.lineno(1)).add(p[2], p[3])
 
+def p_stmt_haz_block(p):
+    "stmt : HAZ block"
+    p[0] = Node("HAZ", line=p.lineno(1)).add(p[2])
+
+
 def p_stmt_mientras_block(p):
     "stmt : MIENTRAS bexpr block"
     p[0] = Node("MIENTRAS", line=p.lineno(1)).add(p[2], p[3])
