@@ -580,6 +580,8 @@ class IntermediateCodeGen:
             return None
 
         if kind == "HAZ":
+            body_node = node.children[0]
+            self._gen_node(body_node)
             return None
 
         # ----- Default: not handled -----
