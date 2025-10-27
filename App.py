@@ -91,12 +91,23 @@ class App(tk.Tk):
     self.paned_window.add(self.outputArea, weight=1)
 
   def _compile_code(self):
+
       try:
           # 1. Obtener el código del editor
           source_code = self.codeArea.get("1.0", tk.END).strip()
           if not source_code:
               self._clear_output()
               self._log_output("El área de código está vacía.")
+              return
+
+          # Obtener la primera línea
+          first_line = source_code.splitlines()[0].strip()
+
+          # Verificar si empieza con comentario (por ejemplo: '#', '//', o ';' según tu lenguaje)
+          # Puedes ajustar los prefijos aceptados aquí
+          if not (first_line.startswith("#") or first_line.startswith("//") or first_line.startswith(";")):
+              self._clear_output()
+              self._log_output("Error: El programa debe iniciar con un comentario en la primera línea.")
               return
 
           # 2. Parsear el texto → AST

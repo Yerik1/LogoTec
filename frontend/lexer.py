@@ -99,6 +99,7 @@ def t_STRING(t):
 # Permitimos típicos IDs de lenguajes: letra/underscore inicial, luego alfanum/underscore.
 def t_ID(t):
     r'[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_]+)?\??'
+    lexeme = t.value
     lexeme_lower = t.value.lower()
     # normalizamos las claves con y sin acento para 'división'
     if lexeme_lower == 'división':
@@ -108,7 +109,34 @@ def t_ID(t):
     if lexeme_lower in _reserved:
         t.type = _reserved[lexeme_lower]
     else:
+        if '.' in lexeme or '?' in lexeme:
+            raise SyntaxError(
+                f"Identificador inválido '{lexeme}': "
+                "las variables no pueden contener '.' ni '?'."
+            )
+
+            # 2.2 Debe iniciar en minúscula
+        if not lexeme[0].islower():
+            raise SyntaxError(
+                f"Identificador inválido '{lexeme}': "
+                "debe iniciar con una letra minúscula."
+            )
+
+            # 2.3 Longitud máxima 10
+        if len(lexeme) > 10:
+            raise SyntaxError(
+                f"Identificador inválido '{lexeme}': "
+                "longitud máxima permitida es 10 caracteres."
+            )
+
+            # 2.4 Solo letras, dígitos, '_', '&', '@'
+        if not re.fullmatch(r'[a-z][A-Za-z0-9_&@]{0,9}', lexeme):
+            raise SyntaxError(
+                f"Identificador inválido '{lexeme}': "
+                "solo se permiten letras, dígitos, y '_', '&', '@' (después del primero)."
+            )
         t.type = 'ID'
+        setattr(t.lexer, 'seen_variable', True)
     return t
 
 # --- Errores léxicos ---

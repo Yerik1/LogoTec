@@ -305,9 +305,12 @@ def p_error(t):
 # Runner
 def build_parser():
     lex = build_lexer()
-    logger = PlyLogger(sys.stdout)
-    parser = yacc.yacc(debug=False, write_tables=False, errorlog=logger)
-    return parser, lex
+    if getattr(lex, "seen_variable", False):
+        raise SyntaxError("No hay variables declaradaso")
+    else:
+        logger = PlyLogger(sys.stdout)
+        parser = yacc.yacc(debug=False, write_tables=False, errorlog=logger)
+        return parser, lex
 
 def parse_text(text: str):
     parser, lex = build_parser()
