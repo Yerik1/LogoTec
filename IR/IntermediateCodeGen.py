@@ -580,8 +580,16 @@ class IntermediateCodeGen:
             return None
 
         if kind == "HAZ":
-            body_node = node.children[0]
-            self._gen_node(body_node)
+            idnode = node.children[0]
+            name = idnode.value
+            alloca = getattr(self, "_ensure_var")(name)
+            cur = self.builder.load(alloca)
+            if len(node.children) == 1:
+                inc_val = ir.Constant(self.INT, 1)
+            else:
+                inc_val = self._gen_node(node.children[1])
+            res = self.builder.add(cur, inc_val)
+            self.builder.store(res, alloca)
             return None
 
         # ----- Default: not handled -----

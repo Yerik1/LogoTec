@@ -174,8 +174,8 @@ def p_stmt_si_block(p):
     p[0] = Node("SI", line=p.lineno(1)).add(p[2], p[3])
 
 def p_stmt_haz_block(p):
-    "stmt : HAZ block"
-    p[0] = Node("HAZ", line=p.lineno(1)).add(p[2])
+    "stmt : HAZ ID expr"
+    p[0] = Node("HAZ", line=p.lineno(1)).add(Node("ID", p[2], line=p.lineno(2)), p[3])
 
 
 def p_stmt_mientras_block(p):
