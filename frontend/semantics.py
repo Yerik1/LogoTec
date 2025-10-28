@@ -214,6 +214,13 @@ def check_stmt(n, st, di):
             di.error(n.line, "La condición de MIENTRAS debe ser booleana")
         check_stmt(n.children[1], st, di)
 
+    elif k == "HAZ":
+        ident = n.children[0]  # Node("ID", nombre)
+        expr = n.children[1]
+        t = type_of_expr(expr, st, di)
+        if t == "unknown":
+            di.warn(expr.line, f"No se puede inferir tipo de la expresión para '{ident.value}'")
+        st.set_var(str(ident.value), "int" if t == "int" else "unknown")
 
     elif k == "HAZ_HASTA":
         check_stmt(n.children[0], st, di)  # bloque

@@ -173,6 +173,11 @@ def p_stmt_si_block(p):
     "stmt : SI bexpr block"
     p[0] = Node("SI", line=p.lineno(1)).add(p[2], p[3])
 
+def p_stmt_haz_block(p):
+    "stmt : HAZ ID expr"
+    p[0] = Node("HAZ", line=p.lineno(1)).add(Node("ID", p[2], line=p.lineno(2)), p[3])
+
+
 def p_stmt_mientras_block(p):
     "stmt : MIENTRAS bexpr block"
     p[0] = Node("MIENTRAS", line=p.lineno(1)).add(p[2], p[3])
@@ -300,9 +305,12 @@ def p_error(t):
 # Runner
 def build_parser():
     lex = build_lexer()
-    logger = PlyLogger(sys.stdout)
-    parser = yacc.yacc(debug=False, write_tables=False, errorlog=logger)
-    return parser, lex
+    if getattr(lex, "seen_variable", False):
+        raise SyntaxError("No hay variables declaradaso")
+    else:
+        logger = PlyLogger(sys.stdout)
+        parser = yacc.yacc(debug=False, write_tables=False, errorlog=logger)
+        return parser, lex
 
 def parse_text(text: str):
     parser, lex = build_parser()

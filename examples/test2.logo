@@ -42,7 +42,7 @@ PONRUMBO 90
 RUMBO
 SB
 OT
-PONCL verde                      // id como color
+PONCL "verde"                      // id como color
 BL
 
 // -------- Bloque EJECUTA (lista de órdenes) --------
