@@ -1,0 +1,14 @@
+// -------- Procedimiento / llamada --------
+PARA cuadrado [l]
+  REPITE 4 [
+    AV l
+    GD 90
+  ]
+FIN
+
+SB
+PONCL "verde"
+// Llamada a procedimiento (sin argumentos en esta gramática básica)
+cuadrado [40]
+
+ESPERA 5000

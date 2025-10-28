@@ -1,0 +1,15 @@
+PONPOS [188 188]
+BL
+PONCL "rojo"
+INIC i = 1
+INIC x = 1
+INIC a = 2
+EJECUTA[
+  REPITE 100 [
+    AV x
+    GD 89
+    INIC x = x + a
+  ]
+]
+ESPERA 5000
+
