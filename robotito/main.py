@@ -19,12 +19,11 @@ color = ""
 escri = True
 
 def bajar_lpz():
-    global color, escri
-    if escri:
-        return
-    else:
-        escri = True
-        
+    global escri, color
+    if(escri):
+        return 
+    
+    escri = True
     if(color == "verde"):
         verde()
     elif(color == "morado"):
@@ -38,34 +37,31 @@ def verde():
     global color
     color = "verde"
     pwm.duty_u16(4500)
-    sleep(2)
+    sleep(0.5)
     pwm.duty_u16(3700)# verde
-    sleep(2)
+    sleep(0.5)
  
 def morado():
     global color
     color = "morado"
     pwm.duty_u16(6800)
-    sleep(2)
+    sleep(0.5)
     pwm.duty_u16(6000)#morado
-    sleep(2)
+    sleep(0.5)
     
 def celeste():
     global color
     color = "celeste"
     pwm.duty_u16(7850)
-    sleep(2)
+    sleep(0.5)
     pwm.duty_u16(7400)#celeste
-    sleep(2)
+    sleep(0.5)
 
 def subirlapiz():
     global escri
-    if escri:
-        pwm.duty_u16(1500)
-        escri = False
-    else:
-        pass
-
+    pwm.duty_u16(1500)
+    escri = False
+    
 def adelante():
     Motor_A_Adelante.value(0)
     Motor_B_Adelante.value(1)
@@ -146,12 +142,12 @@ def pagina_web():
             </form>
 
             <form action="./bajarlapiz">
-                <input type="submit" value="Bajar Lápiz" 
+                <input type="submit" value="Bajar Lapiz" 
                 style="background-color: #34495e; border-radius: 15px; height:70px; width:120px; border: none; color: white; padding: 10px; margin-bottom: 10px"/>
             </form>
 
             <form action="./levantarlapiz">
-                <input type="submit" value="Levantar Lápiz" 
+                <input type="submit" value="Levantar Lapiz" 
                 style="background-color: #7f8c8d; border-radius: 15px; height:70px; width:120px; border: none; color: white; padding: 10px"/>
             </form>
         </div>
@@ -207,18 +203,9 @@ def serve(connection):
             derecha()
         elif peticion =='/atras?':
             atras()
-        elif peticion =='/bajarlapiz':
-            escri = True
-            if color=='verde':
-                verde()
-            elif color == 'morado':
-                morado()
-            elif color == 'celeste':
-                celeste()
-            else:
-                color = 'verde'
-                verde()
-        elif peticion == '/subirlapiz':
+        elif peticion =='/bajarlapiz?':
+            bajar_lpz()
+        elif peticion == '/levantarlapiz?':
             subirlapiz()
         elif peticion == '/verde?':
             if escri:
