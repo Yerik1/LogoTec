@@ -4,8 +4,8 @@ from time import sleep
 import machine
 from machine import Pin, PWM
 
-ssid = '2505000_AP_2.4_339F2D'
-password = 'radioshack1234'
+ssid = 'Gabriel'
+password = '12345678j'
 
 Motor_A_Adelante = Pin(18, Pin.OUT)
 Motor_A_Atras = Pin(19, Pin.OUT)
