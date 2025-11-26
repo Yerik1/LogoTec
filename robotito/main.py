@@ -19,6 +19,11 @@ pwm.freq(50)
 color = ""
 escri = True
 
+def mover_tiempo(func, ms=300):
+    func()
+    sleep(ms/1000)
+    detener()
+
 def bajar_lpz():
     global escri, color
     if(escri):
@@ -96,12 +101,25 @@ def derecha():
     Motor_A_Atras.value(1)
     Motor_B_Atras.value(1)
 
+def adelante_t(ms=300):
+    mover_tiempo(adelante, ms)
+
+def atras_t(ms=300):
+    mover_tiempo(atras, ms)
+
+def izquierda_t(ms=300):
+    mover_tiempo(izquierda, ms)
+
+def derecha_t(ms=300):
+    mover_tiempo(derecha, ms)
+
+
 # Mapa de instrucción => función
 INSTRUCCIONES = {
-    "ADELANTE": adelante,
-    "ATRAS": atras,
-    "IZQUIERDA": izquierda,
-    "DERECHA": derecha,
+    "ADELANTE": adelante_t,
+    "ATRAS": atras_t,
+    "IZQUIERDA": izquierda_t,
+    "DERECHA": derecha_t,
     "DETENER": detener,
     "VERDE": verde,
     "MORADO": morado,
