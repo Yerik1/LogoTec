@@ -136,6 +136,7 @@ def conectar():
 def open_socket(ip):
     address = (ip, 80)
     connection = socket.socket()
+    connection.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     connection.bind(address)
     connection.listen(1)
     return connection
@@ -255,6 +256,7 @@ def serve(connection):
 
 def server_tcp():
     s = socket.socket()
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(("", 9000))
     s.listen(1)
     print("Servidor TCP listo en puerto 9000")
@@ -277,11 +279,11 @@ def server_tcp():
 
 try:
     ip = conectar()
-    connection = open_socket(ip)
 
     # Sevidor TCP
     _thread.start_new_thread(server_tcp, ())
 
+    connection = open_socket(ip)
     serve(connection)
 except KeyboardInterrupt:
     machine.reset()
