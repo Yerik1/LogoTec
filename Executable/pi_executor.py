@@ -10,7 +10,7 @@ from typing import Optional, Callable
 class PiExecutor:
     """Ejecuta comandos en la Raspberry Pi por TCP sin bloquear la UI."""
     
-    def __init__(self, pi_ip: str, pi_port: int = 5000, 
+    def __init__(self, pi_ip: str, pi_port: int = 9000, 
                  on_message: Optional[Callable[[str], None]] = None,
                  on_error: Optional[Callable[[str], None]] = None):
         """

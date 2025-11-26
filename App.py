@@ -4,6 +4,7 @@ import os, sys, subprocess
 from pathlib import Path
 
 from Executable.drawing import start_embed_server
+from Executable.pi_executor import PiExecutor, translate_runtime_to_pi
 from frontend.parser import parse_text
 from frontend.semantics import analyze
 from frontend.exporter import save_ast_json, save_diags_txt
@@ -26,6 +27,10 @@ class App(tk.Tk):
     # Almacenar AST y AST optimizado para comparación
     self.original_ast = None
     self.optimized_ast = None
+    # Pi connection state
+    self.pi_executor = None
+    self.pi_ip = "192.168.1.100"
+    self.pi_port = 9000
     
     self._create_widgets()
 
@@ -76,9 +81,45 @@ class App(tk.Tk):
     self.canvas = tk.Canvas(self.hbox, bg="white")
     self.canvas.grid(row=0, column=1, sticky="nsew")
 
+    # Panel de control para Raspberry Pi (botones)
+    self.pi_panel = ttk.Frame(self.hbox, borderwidth=1, relief="ridge")
+    self.pi_panel.grid(row=0, column=2, sticky="nsew", padx=(8,0))
+
+    # Conexión Pi
+    ttk.Label(self.pi_panel, text="Raspberry Pi (IP:Puerto)").pack(padx=6, pady=(6,2))
+    conn_frame = ttk.Frame(self.pi_panel)
+    conn_frame.pack(padx=6, pady=2)
+    self.pi_ip_var = tk.StringVar(value=self.pi_ip)
+    self.pi_port_var = tk.StringVar(value=str(self.pi_port))
+    ttk.Entry(conn_frame, textvariable=self.pi_ip_var, width=14).pack(side=tk.LEFT)
+    ttk.Entry(conn_frame, textvariable=self.pi_port_var, width=6).pack(side=tk.LEFT, padx=(6,0))
+    self.pi_connect_btn = ttk.Button(self.pi_panel, text="Conectar", command=self._connect_pi)
+    self.pi_connect_btn.pack(padx=6, pady=6)
+    # Estado de conexión
+    self.pi_status_label = ttk.Label(self.pi_panel, text="Desconectado", foreground="red")
+    self.pi_status_label.pack(padx=6, pady=(0,6))
+
+    # Botones de instrucciones
+    btns = [
+      ("ADELANTE", "ADELANTE"), ("ATRAS", "ATRAS"), ("IZQUIERDA", "IZQUIERDA"), ("DERECHA", "DERECHA"),
+      ("DETENER", "DETENER"), ("BAJAR LAPIZ", "BAJAR_LAPIZ"), ("LEVANTAR LAPIZ", "LEVANTAR_LAPIZ"),
+      ("VERDE", "VERDE"), ("MORADO", "MORADO"), ("CELESTE", "CELESTE"),
+    ]
+    # Lista para controlar estado de botones Pi
+    self.pi_buttons = []
+    for (label, cmd) in btns:
+      b = ttk.Button(self.pi_panel, text=label, command=lambda c=cmd: self._send_pi_command(c), state=tk.DISABLED)
+      b.pack(fill=tk.X, padx=6, pady=2)
+      self.pi_buttons.append(b)
+
+    # Botón: Ejecutar en maquina (envía el programa compilado a la Pi)
+    self.exec_on_pi_btn = ttk.Button(self.pi_panel, text="Ejecutar en maquina", command=self._exec_on_pi, state=tk.DISABLED)
+    self.exec_on_pi_btn.pack(fill=tk.X, padx=6, pady=(12,2))
+
     # Configuración
     self.hbox.columnconfigure(0, weight=3)
     self.hbox.columnconfigure(1, weight=2)
+    self.hbox.columnconfigure(2, weight=1)
     self.hbox.rowconfigure(0, weight=1)
 
     self.paned_window.add(self.hbox, weight=4)
@@ -89,6 +130,66 @@ class App(tk.Tk):
     """
     self.outputArea = tk.Text(self.paned_window, bg="black", fg="white", state=tk.DISABLED, height=8)
     self.paned_window.add(self.outputArea, weight=1)
+
+  def _connect_pi(self):
+    """Conectar/Desconectar a la Raspberry Pi usando PiExecutor."""
+    ip = self.pi_ip_var.get().strip()
+    try:
+      port = int(self.pi_port_var.get().strip())
+    except Exception:
+      messagebox.showerror("Error", "Puerto inválido")
+      return
+
+    if self.pi_executor and self.pi_executor.connected:
+      self.pi_executor.disconnect()
+      self.pi_executor = None
+      self.pi_connect_btn.config(text="Conectar")
+      self._set_pi_buttons_enabled(False)
+      self._log_output("Desconectado de la Pi")
+      return
+
+    # crear y conectar
+    self.pi_executor = PiExecutor(ip, port, on_message=self._log_output, on_error=self._log_output)
+    if self.pi_executor.connect():
+      self.pi_connect_btn.config(text="Desconectar")
+      self._set_pi_buttons_enabled(True)
+      self._log_output(f"Conectado a Pi {ip}:{port}")
+    else:
+      self.pi_executor = None
+
+  def _send_pi_command(self, cmd: str):
+    """Enviar comando simple a la Pi (no bloqueante)."""
+    if not hasattr(self, 'pi_executor') or not self.pi_executor:
+      messagebox.showwarning("Aviso", "No conectado a la Pi. Presiona 'Conectar'.")
+      return
+    # enviar en hilo para evitar bloquear UI
+    def worker():
+      try:
+        self.pi_executor.send_command(cmd)
+      except Exception as e:
+        self._log_output(f"Error enviando comando: {e}")
+    import threading
+    threading.Thread(target=worker, daemon=True).start()
+
+  def _set_pi_buttons_enabled(self, enabled: bool):
+    """Habilita o deshabilita los botones del panel Pi y actualiza la etiqueta de estado."""
+    state = tk.NORMAL if enabled else tk.DISABLED
+    for b in getattr(self, 'pi_buttons', []):
+      try:
+        b.config(state=state)
+      except Exception:
+        pass
+    # actualizar etiqueta de estado
+    if enabled:
+      try:
+        self.pi_status_label.config(text="Conectado", foreground="green")
+      except Exception:
+        pass
+    else:
+      try:
+        self.pi_status_label.config(text="Desconectado", foreground="red")
+      except Exception:
+        pass
 
   def _compile_code(self):
 
@@ -169,7 +270,20 @@ class App(tk.Tk):
           self._log_output("=== Compilación completada ===")
           self._log_output("\n-- Diagnósticos --")
           self._log_output(diags.pretty())
-          
+          # Marcar compilación exitosa y generar comandos runtime para envío a Pi
+          try:
+            self.compiled = True
+            if self.optimized_ast is not None:
+              self._last_runtime_commands = self._ast_to_runtime_commands(self.optimized_ast)
+            else:
+              self._last_runtime_commands = self._ast_to_runtime_commands(self.original_ast)
+            self._log_output(f"Comandos runtime generados: {len(self._last_runtime_commands)} comandos")
+            self._set_exec_button_enabled(True)
+          except Exception as _e:
+            self.compiled = False
+            self._last_runtime_commands = []
+            self._set_exec_button_enabled(False)
+
       except Exception as e:
           messagebox.showerror("Error de compilación", str(e))
           self._clear_output()
@@ -234,6 +348,146 @@ class App(tk.Tk):
         # Solo hay AST original
         viewer = AstViewer(self, json_path="out/ast.json")
         viewer.title("AST Original")
+
+  def _set_exec_button_enabled(self, enabled: bool):
+    try:
+      state = tk.NORMAL if enabled else tk.DISABLED
+      self.exec_on_pi_btn.config(state=state)
+    except Exception:
+      pass
+
+  def _ast_to_runtime_commands(self, node) -> list:
+    """Convierte (recursivamente) un AST en una lista de comandos runtime (strings).
+
+    Implementación simple: soporta movimientos con literales, lápiz, color y espera.
+    No resuelve variables o llamadas a funciones complejas; para esos casos intenta
+    recorrer el árbol e incluir comandos de los hijos.
+    """
+    cmds = []
+    if node is None:
+      return cmds
+    kind = getattr(node, 'kind', '').upper()
+    if kind in ("PROGRAM", "STMTS"):
+      for c in node.children:
+        cmds.extend(self._ast_to_runtime_commands(c))
+      return cmds
+
+    if kind in ("AV", "RE", "GD", "GI"):
+      val = 0
+      if node.children:
+        ch = node.children[0]
+        if getattr(ch, 'kind', '').upper() == 'NUM':
+          try:
+            val = int(ch.value)
+          except Exception:
+            val = 0
+      if kind == 'AV':
+        cmds.append(f"FORWARD {val}")
+      elif kind == 'RE':
+        cmds.append(f"BACK {val}")
+      elif kind == 'GD':
+        cmds.append(f"RIGHT {val}")
+      elif kind == 'GI':
+        cmds.append(f"LEFT {val}")
+      return cmds
+
+    if kind == 'BL':
+      cmds.append('PENUP')
+      return cmds
+    if kind == 'SB':
+      cmds.append('PENDOWN')
+      return cmds
+
+    if kind == 'ESPERA':
+      v = 100
+      if node.children and getattr(node.children[0], 'kind', '').upper() == 'NUM':
+        try:
+          v = int(node.children[0].value)
+        except Exception:
+          v = 100
+      cmds.append(f"DELAY {v}")
+      return cmds
+
+    if kind == 'PONCL' and node.children:
+      ch = node.children[0]
+      if getattr(ch, 'kind', '').upper() == 'NUM':
+        try:
+          cid = int(ch.value)
+          cmds.append(f"COLOR {cid}")
+        except Exception:
+          pass
+      elif getattr(ch, 'kind', '').upper() == 'STR':
+        cmds.append(f"COLORNAME {ch.value}")
+      return cmds
+
+    if kind == 'PONPOS' and len(node.children) >= 2:
+      a, b = node.children[0], node.children[1]
+      if getattr(a, 'kind', '').upper() == 'NUM' and getattr(b, 'kind', '').upper() == 'NUM':
+        cmds.append(f"POS {int(a.value)} {int(b.value)}")
+      return cmds
+
+    if kind == 'PONX' and node.children and getattr(node.children[0], 'kind', '').upper() == 'NUM':
+      cmds.append(f"POSX {int(node.children[0].value)}")
+      return cmds
+
+    if kind == 'PONY' and node.children and getattr(node.children[0], 'kind', '').upper() == 'NUM':
+      cmds.append(f"POSY {int(node.children[0].value)}")
+      return cmds
+
+    if kind == 'CENTRO':
+      cmds.append('CENTER')
+      return cmds
+
+    if kind == 'REPITE' and len(node.children) >= 2:
+      count_node = node.children[0]
+      body_node = node.children[1]
+      try:
+        if getattr(count_node, 'kind', '').upper() == 'NUM':
+          times = int(count_node.value)
+          for _ in range(times):
+            cmds.extend(self._ast_to_runtime_commands(body_node))
+      except Exception:
+        pass
+      return cmds
+
+    # Fallback: recorrer hijos
+    for c in getattr(node, 'children', []) or []:
+      cmds.extend(self._ast_to_runtime_commands(c))
+    return cmds
+
+  def _exec_on_pi(self):
+    """Envía los comandos runtime generados a la Raspberry Pi usando PiExecutor.
+
+    Requiere que el programa haya sido compilado (botón habilitado tras compilar).
+    """
+    if not getattr(self, 'compiled', False):
+      messagebox.showwarning("Aviso", "Compila el código antes de ejecutar en la máquina.")
+      return
+    if not getattr(self, 'pi_executor', None) or not self.pi_executor.connected:
+      messagebox.showwarning("Aviso", "No conectado a la Pi. Por favor presiona 'Conectar' antes de enviar.")
+      return
+
+    pi_cmds = []
+    for rc in getattr(self, '_last_runtime_commands', []) or []:
+      try:
+        pi_cmd = translate_runtime_to_pi(rc)
+        if pi_cmd:
+          pi_cmds.append(pi_cmd)
+      except Exception:
+        pass
+
+    if not pi_cmds:
+      messagebox.showinfo("Info", "No se generaron comandos para enviar a la Pi.")
+      return
+
+    def done():
+      self._log_output("Ejecución en Pi completada")
+
+    self._log_output(f"Enviando {len(pi_cmds)} comandos a la Pi...")
+    try:
+      self.pi_executor.execute_commands_async(pi_cmds, done_callback=done)
+    except Exception as e:
+      self._log_output(f"Error enviando a Pi: {e}")
 
   def _run_code(self):
       import os, sys, subprocess, shutil, threading, traceback

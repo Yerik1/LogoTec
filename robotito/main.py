@@ -3,6 +3,7 @@ import socket
 from time import sleep
 import machine
 from machine import Pin, PWM
+import _thread
 
 ssid = 'Gabriel'
 password = '12345678j'
@@ -94,6 +95,29 @@ def derecha():
     Motor_B_Adelante.value(0)
     Motor_A_Atras.value(1)
     Motor_B_Atras.value(1)
+
+# Mapa de instrucción => función
+INSTRUCCIONES = {
+    "ADELANTE": adelante,
+    "ATRAS": atras,
+    "IZQUIERDA": izquierda,
+    "DERECHA": derecha,
+    "DETENER": detener,
+    "VERDE": verde,
+    "MORADO": morado,
+    "CELESTE": celeste,
+    "BAJAR_LAPIZ": bajar_lpz,
+    "LEVANTAR_LAPIZ": subirlapiz,
+}
+
+def ejecutar_comando(cmd):
+    cmd = cmd.strip().upper()
+    print("Recibido:", cmd)
+
+    if cmd in INSTRUCCIONES:
+        INSTRUCCIONES[cmd]()
+    else:
+        print("Comando no válido:", cmd)
 
 
 detener()
@@ -229,9 +253,35 @@ def serve(connection):
         cliente.send(html)
         cliente.close()
 
+def server_tcp():
+    s = socket.socket()
+    s.bind(("", 9000))
+    s.listen(1)
+    print("Servidor TCP listo en puerto 9000")
+
+    while True:
+        conn, addr = s.accept()
+        print("Cliente conectado:", addr)
+
+        while True:
+            data = conn.recv(1024)
+            if not data:
+                break
+
+            comandos = data.decode().split("\n")
+            for c in comandos:
+                if c.strip():
+                    ejecutar_comando(c)
+
+        conn.close()
+
 try:
     ip = conectar()
     connection = open_socket(ip)
+
+    # Sevidor TCP
+    _thread.start_new_thread(server_tcp, ())
+
     serve(connection)
 except KeyboardInterrupt:
     machine.reset()
