@@ -6,7 +6,7 @@ from machine import Pin, PWM
 import _thread
 
 ssid = 'Gabriel'
-password = '12345678j'
+password = '12345678'
 
 Motor_A_Adelante = Pin(18, Pin.OUT)
 Motor_A_Atras = Pin(19, Pin.OUT)

@@ -1,3 +1,4 @@
+//comen
 PONPOS [188 188]
 BL
 PONCL "rojo"
@@ -5,9 +6,12 @@ INIC i = 1
 INIC x = 1
 INIC a = 2
 EJECUTA[
-  REPITE 100 [
+  REPITE 50 [
     AV x
     GD 89
+    GD 1
+    GD 1
+    GD 1
     INIC x = x + a
   ]
 ]
